@@ -1,0 +1,14 @@
+{
+  "name": "exch.gr-migrant",
+  "packageManager": "yarn@3.4.1",
+  "devDependencies": {
+    "@types/chai": "^4.3.9",
+    "@types/mocha": "^10.0.3",
+    "@types/sinon": "^10.0.20",
+    "chai": "^4.3.10",
+    "mocha": "^10.2.0",
+    "sinon": "^17.0.0",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.2.2"
+  }
+}
