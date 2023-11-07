@@ -9,3 +9,4 @@
 # Documentation here: https://yarnpkg.com/features/zero-installs
 !.yarn/cache
 #.pnp.*
+/resources/Squarespace-Wordpress-Export-10-12-2023.xml
