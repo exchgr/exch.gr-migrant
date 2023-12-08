@@ -157,6 +157,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/chai-as-promised@npm:^7.1.8":
+  version: 7.1.8
+  resolution: "@types/chai-as-promised@npm:7.1.8"
+  dependencies:
+    "@types/chai": "*"
+  checksum: f0e5eab451b91bc1e289ed89519faf6591932e8a28d2ec9bbe95826eb73d28fe43713633e0c18706f3baa560a7d97e7c7c20dc53ce639e5d75bac46b2a50bf21
+  languageName: node
+  linkType: hard
+
 "@types/chai@npm:*, @types/chai@npm:^4.3.9":
   version: 4.3.9
   resolution: "@types/chai@npm:4.3.9"
@@ -510,6 +519,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"chai-as-promised@npm:^7.1.1":
+  version: 7.1.1
+  resolution: "chai-as-promised@npm:7.1.1"
+  dependencies:
+    check-error: ^1.0.2
+  peerDependencies:
+    chai: ">= 2.1.2 < 5"
+  checksum: 7262868a5b51a12af4e432838ddf97a893109266a505808e1868ba63a12de7ee1166e9d43b5c501a190c377c1b11ecb9ff8e093c89f097ad96c397e8ec0f8d6a
+  languageName: node
+  linkType: hard
+
 "chai@npm:^4.3.10":
   version: 4.3.10
   resolution: "chai@npm:4.3.10"
@@ -535,7 +555,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"check-error@npm:^1.0.3":
+"check-error@npm:^1.0.2, check-error@npm:^1.0.3":
   version: 1.0.3
   resolution: "check-error@npm:1.0.3"
   dependencies:
@@ -841,6 +861,7 @@ __metadata:
   resolution: "exch.gr-migrant@workspace:."
   dependencies:
     "@types/chai": ^4.3.9
+    "@types/chai-as-promised": ^7.1.8
     "@types/jsdom": ^21.1.5
     "@types/minimist": ^1.2.4
     "@types/mocha": ^10.0.3
@@ -848,6 +869,7 @@ __metadata:
     "@types/sinon": ^10.0.20
     "@types/sinon-chai": ^3.2.11
     chai: ^4.3.10
+    chai-as-promised: ^7.1.1
     jsdom: ^22.1.0
     minimist: ^1.2.8
     mocha: ^10.2.0

@@ -17,6 +17,8 @@
     "typescript": "^5.2.2"
   },
   "dependencies": {
+    "@types/chai-as-promised": "^7.1.8",
+    "chai-as-promised": "^7.1.1",
     "jsdom": "^22.1.0",
     "minimist": "^1.2.8",
     "strapi-sdk-js": "^2.3.3"
