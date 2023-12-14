@@ -1,7 +1,8 @@
-import {expect} from "chai";
-import SquarespaceImporter from "../src/SquarespaceImporter";
-import {JSDOM} from "jsdom";
-import {Post} from "../src/Post";
+import {expect} from "chai"
+import SquarespaceImporter from "../src/SquarespaceImporter"
+import {JSDOM} from "jsdom"
+import {Post} from "../src/Post"
+import {Tag} from "../src/Tag"
 
 describe("SquarespaceImporter", () => {
 	describe("import", () => {
@@ -17,6 +18,32 @@ describe("SquarespaceImporter", () => {
 				author: "elle mundy",
 				collection: "Photography",
 				og_type: "article",
+				tags: [
+					{
+						name: "House of Abundance",
+						slug: "house-of-abundance"
+					},
+					{
+						name: "Bed-Stuy",
+						slug: "bed-stuy"
+					},
+					{
+						name: "Brooklyn",
+						slug: "brooklyn"
+					},
+					{
+						name: "Stoop show",
+						slug: "stoop-show"
+					},
+					{
+						name: "Poetry reading",
+						slug: "poetry-reading"
+					},
+					{
+						name: "Live music",
+						slug: "live-music"
+					},
+				]
 			}]
 
 			const squarespaceImporter = new SquarespaceImporter()
@@ -31,7 +58,7 @@ describe("SquarespaceImporter", () => {
 
 			const items = squarespaceImporter._extractItems(squarespaceData);
 
-			const itemsContents = getTextContents(items)
+			const itemsContents = getItemTextContents(items)
 			const expectedItemsContents = [pageXmlFragment, publishedPostXmlFragment, draftPostXmlFragment]
 
 			itemsContents.map((itemContent, index) => {
@@ -91,7 +118,7 @@ describe("SquarespaceImporter", () => {
 	})
 
 	describe("_convertToPost", () => {
-		it("should convert a Squarespace item to a post", () => {
+		it("should convert a Squarespace item to a Post with Tags, excluding Photography", () => {
 			const squarespaceImporter = new SquarespaceImporter()
 
 			const item = new JSDOM(
@@ -99,9 +126,8 @@ describe("SquarespaceImporter", () => {
 				{ contentType: "text/xml" }
 			).window.document.querySelector("item")!
 
-			const post = squarespaceImporter._convertToPost(item);
-
 			const pubDate = new Date("Mon, 02 Jan 2023 01:08:58 +0000");
+
 			const expectedPost: Post = {
 				title: "Rethinking Social Media in 2023: A New Home for my Photos // House of Abundance: Stoop Edition",
 				body: "<article>this is a post</article>",
@@ -112,14 +138,84 @@ describe("SquarespaceImporter", () => {
 				author: "elle mundy",
 				collection: "Photography",
 				og_type: "article",
+				tags: [
+					{
+						name: "House of Abundance",
+						slug: "house-of-abundance"
+					},
+					{
+						name: "Bed-Stuy",
+						slug: "bed-stuy"
+					},
+					{
+						name: "Brooklyn",
+						slug: "brooklyn"
+					},
+					{
+						name: "Stoop show",
+						slug: "stoop-show"
+					},
+					{
+						name: "Poetry reading",
+						slug: "poetry-reading"
+					},
+					{
+						name: "Live music",
+						slug: "live-music"
+					}
+				]
 			}
 
-			expect(post).to.deep.eq(expectedPost)
+			expect(squarespaceImporter._convertToPost(item)).to.deep.eq(expectedPost)
+		})
+	})
+
+	describe("_extractCategories", () => {
+		it("extract an array of Tags from an xml <item>", () => {
+			const squarespaceImporter = new SquarespaceImporter()
+
+			const item = new JSDOM(
+				publishedPostXml,
+				{
+					contentType: "text/xml",
+					url: "http://localhost"
+				}
+			).window.document.querySelector("item")!
+
+			squarespaceImporter._extractCategories(item).forEach((category: Element, index: number) => {
+				const expectedCategory: {[key: string]: string} = publishedPostCategoryData[index]
+
+				expect(Array.from(category.childNodes)[0].textContent!).to.eq(expectedCategory.cdata)
+
+				Array.from(category.attributes).forEach((attribute: Attr) => {
+					expect(attribute.value).to.eq(expectedCategory[attribute.name])
+				})
+			})
+		})
+	})
+
+	describe("_convertToTag", () => {
+		it('should convert an xml <category domain="post_tag"> to a Tag', () => {
+			const squarespaceImporter = new SquarespaceImporter()
+
+			const category = new JSDOM(
+				publishedPostXml,
+				{ contentType: "text/xml" }
+			).window.document
+				.querySelector("item")!
+				.querySelector('category[domain="post_tag"]')!
+
+			const expectedTag: Tag = {
+				name: "House of Abundance",
+				slug: "house-of-abundance"
+			}
+
+			expect(squarespaceImporter._convertToTag(category)).to.deep.eq(expectedTag)
 		})
 	})
 })
 
-const getTextContents = (items: Element[]) =>
+const getItemTextContents = (items: Element[]) =>
 	items.map(
 		(item: Element) => item.outerHTML
 			.replace(/ xmlns:content="http:\/\/purl.org\/rss\/1.0\/modules\/content\/"/g, "")
@@ -142,13 +238,73 @@ const pageXml = `${preamble}
 				${pageXmlFragment}
 ${postamble}`
 
-const publishedPostXmlFragment = "<item>\n            <title>Rethinking Social Media in 2023: A New Home for my Photos // House of Abundance: Stoop Edition</title>\n            <link>/fotoblog/rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23</link>\n            <content:encoded><![CDATA[<article>this is a post</article>]]></content:encoded>\n            <excerpt:encoded />\n            <wp:post_name>rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23</wp:post_name>\n            <wp:post_type>post</wp:post_type>\n            <wp:post_id>1</wp:post_id>\n            <wp:status>publish</wp:status>\n            <pubDate>Mon, 02 Jan 2023 01:08:58 +0000</pubDate>\n            <wp:post_date>2023-01-02 01:08:58</wp:post_date>\n            <wp:post_date_gmt>2023-01-02 01:08:58</wp:post_date_gmt>\n            <category domain=\"post_tag\" nicename=\"house-of-abundance\"><![CDATA[House of Abundance]]></category>\n            <category domain=\"post_tag\" nicename=\"bed-stuy\"><![CDATA[Bed-Stuy]]></category>\n            <category domain=\"post_tag\" nicename=\"brooklyn\"><![CDATA[Brooklyn]]></category>\n            <category domain=\"post_tag\" nicename=\"stoop-show\"><![CDATA[Stoop show]]></category>\n            <category domain=\"post_tag\" nicename=\"poetry-reading\"><![CDATA[Poetry reading]]></category>\n            <category domain=\"post_tag\" nicename=\"live-music\"><![CDATA[Live music]]></category>\n            <category domain=\"post_tag\" nicename=\"photography\"><![CDATA[Photography]]></category>\n            <dc:creator>exchgr@icloud.com</dc:creator>\n            <wp:comment_status>closed</wp:comment_status>\n            <wp:postmeta>\n                <wp:meta_key>_thumbnail_id</wp:meta_key>\n                <wp:meta_value><![CDATA[2]]></wp:meta_value>\n            </wp:postmeta>\n        </item>"
+const publishedPostCategoryData = [
+	{domain: "post_tag", nicename: "house-of-abundance", cdata: "House of Abundance"},
+	{domain: "post_tag", nicename: "bed-stuy", cdata: "Bed-Stuy"},
+	{domain: "post_tag", nicename: "brooklyn", cdata: "Brooklyn"},
+	{domain: "post_tag", nicename: "stoop-show", cdata: "Stoop show"},
+	{domain: "post_tag", nicename: "poetry-reading", cdata: "Poetry reading"},
+	{domain: "post_tag", nicename: "live-music", cdata: "Live music"},
+	{domain: "post_tag", nicename: "photography", cdata: "Photography"}
+]
+
+const publishedPostCategoryXmlFragments = publishedPostCategoryData.map((publishedPostCategoryDatum) =>
+	`<category domain="${publishedPostCategoryDatum.domain}" nicename="${publishedPostCategoryDatum.nicename}"><![CDATA[${publishedPostCategoryDatum.cdata}]]></category>`
+)
+
+const publishedPostCategoriesXmlFragment = publishedPostCategoryXmlFragments.join("            ")
+
+const publishedPostXmlFragment = `<item>
+            <title>Rethinking Social Media in 2023: A New Home for my Photos // House of Abundance: Stoop Edition</title>
+            <link>/fotoblog/rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23</link>
+            <content:encoded><![CDATA[<article>this is a post</article>]]></content:encoded>
+            <excerpt:encoded />
+            <wp:post_name>rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23</wp:post_name>
+            <wp:post_type>post</wp:post_type>
+            <wp:post_id>1</wp:post_id>
+            <wp:status>publish</wp:status>
+            <pubDate>Mon, 02 Jan 2023 01:08:58 +0000</pubDate>
+            <wp:post_date>2023-01-02 01:08:58</wp:post_date>
+            <wp:post_date_gmt>2023-01-02 01:08:58</wp:post_date_gmt>
+            ${publishedPostCategoriesXmlFragment}
+            <dc:creator>exchgr@icloud.com</dc:creator>
+            <wp:comment_status>closed</wp:comment_status>
+            <wp:postmeta>
+                <wp:meta_key>_thumbnail_id</wp:meta_key>
+                <wp:meta_value><![CDATA[2]]></wp:meta_value>
+            </wp:postmeta>
+        </item>`
 
 const publishedPostXml = `${preamble}
 				${publishedPostXmlFragment}
 ${postamble}`
 
-const draftPostXmlFragment = "<item>\n            <title>DRAFT: Rethinking Social Media in 2023: A New Home for my Photos // House of Abundance: Stoop Edition</title>\n            <link>/fotoblog/rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23</link>\n            <content:encoded><![CDATA[<article>this is a post</article>]]></content:encoded>\n            <excerpt:encoded />\n            <wp:post_name>rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23</wp:post_name>\n            <wp:post_type>post</wp:post_type>\n            <wp:post_id>1</wp:post_id>\n            <wp:status>draft</wp:status>\n            <pubDate>Mon, 02 Jan 2023 01:08:58 +0000</pubDate>\n            <wp:post_date>2023-01-02 01:08:58</wp:post_date>\n            <wp:post_date_gmt>2023-01-02 01:08:58</wp:post_date_gmt>\n            <category domain=\"post_tag\" nicename=\"house-of-abundance\"><![CDATA[House of Abundance]]></category>\n            <category domain=\"post_tag\" nicename=\"bed-stuy\"><![CDATA[Bed-Stuy]]></category>\n            <category domain=\"post_tag\" nicename=\"brooklyn\"><![CDATA[Brooklyn]]></category>\n            <category domain=\"post_tag\" nicename=\"stoop-show\"><![CDATA[Stoop show]]></category>\n            <category domain=\"post_tag\" nicename=\"poetry-reading\"><![CDATA[Poetry reading]]></category>\n            <category domain=\"post_tag\" nicename=\"live-music\"><![CDATA[Live music]]></category>\n            <category domain=\"post_tag\" nicename=\"photography\"><![CDATA[Photography]]></category>\n            <dc:creator>exchgr@icloud.com</dc:creator>\n            <wp:comment_status>closed</wp:comment_status>\n            <wp:postmeta>\n                <wp:meta_key>_thumbnail_id</wp:meta_key>\n                <wp:meta_value><![CDATA[2]]></wp:meta_value>\n            </wp:postmeta>\n        </item>"
+const draftPostXmlFragment = `<item>
+            <title>DRAFT: Rethinking Social Media in 2023: A New Home for my Photos // House of Abundance: Stoop Edition</title>
+            <link>/fotoblog/rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23</link>
+            <content:encoded><![CDATA[<article>this is a post</article>]]></content:encoded>
+            <excerpt:encoded />
+            <wp:post_name>rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23</wp:post_name>
+            <wp:post_type>post</wp:post_type>
+            <wp:post_id>1</wp:post_id>
+            <wp:status>draft</wp:status>
+            <pubDate>Mon, 02 Jan 2023 01:08:58 +0000</pubDate>
+            <wp:post_date>2023-01-02 01:08:58</wp:post_date>
+            <wp:post_date_gmt>2023-01-02 01:08:58</wp:post_date_gmt>
+            <category domain="post_tag" nicename="house-of-abundance"><![CDATA[House of Abundance]]></category>
+            <category domain="post_tag" nicename="bed-stuy"><![CDATA[Bed-Stuy]]></category>
+            <category domain="post_tag" nicename="brooklyn"><![CDATA[Brooklyn]]></category>
+            <category domain="post_tag" nicename="stoop-show"><![CDATA[Stoop show]]></category>
+            <category domain="post_tag" nicename="poetry-reading"><![CDATA[Poetry reading]]></category>
+            <category domain="post_tag" nicename="live-music"><![CDATA[Live music]]></category>
+            <category domain="post_tag" nicename="photography"><![CDATA[Photography]]></category>
+            <dc:creator>exchgr@icloud.com</dc:creator>
+            <wp:comment_status>closed</wp:comment_status>
+            <wp:postmeta>
+                <wp:meta_key>_thumbnail_id</wp:meta_key>
+                <wp:meta_value><![CDATA[2]]></wp:meta_value>
+            </wp:postmeta>
+        </item>`
 
 const draftPostXml = `${preamble}
 				${draftPostXmlFragment}

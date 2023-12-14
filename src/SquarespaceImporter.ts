@@ -1,5 +1,6 @@
 import { JSDOM } from "jsdom";
 import { Post } from "Post";
+import {Tag} from "Tag"
 
 export default class SquarespaceImporter {
 	import = (squarespaceData: string): Post[] =>
@@ -32,7 +33,20 @@ export default class SquarespaceImporter {
 			slug: item.querySelector("wp\\:post_name")!.textContent!,
 			author: "elle mundy",
 			collection: "Photography",
-			og_type: "article"
+			og_type: "article",
+			tags: this._extractCategories(item).map(this._convertToTag).filter((tag: Tag) => {
+				return tag.name != "Photography"
+			})
 		};
 	}
+
+	_extractCategories = (item: Element): Element[] =>
+		Array.from(item.querySelectorAll('category[domain="post_tag"]'))
+
+	_convertToTag = (category: Element): Tag => ({
+		name: Array.from(category.childNodes)[0].textContent!,
+		slug: Array.from(category.attributes).filter((attribute) =>
+			attribute.name == "nicename"
+		)[0].value
+	})
 }

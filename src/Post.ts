@@ -1,3 +1,5 @@
+import {Tag} from "Tag"
+
 export type Post = {
 	title: string
 	body: string
@@ -8,4 +10,5 @@ export type Post = {
 	author: string
 	collection: string
 	og_type: string
+	tags: Tag[]
 }
