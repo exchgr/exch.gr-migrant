@@ -25,7 +25,7 @@ const main = async (
 	const strapi = buildStrapi({ url: options.strapi })
 
 	if (options.squarespace) {
-		const posts = squarespaceImporter.import(
+		const dataContainer = squarespaceImporter.import(
 			fsProxy.readFileSync(
 				options.squarespace
 			).toString()
@@ -33,7 +33,7 @@ const main = async (
 
 		const strapiExporter = buildStrapiExporter(strapi)
 
-		await strapiExporter.export(posts)
+		await strapiExporter.export(dataContainer.posts)
 	}
 }
 

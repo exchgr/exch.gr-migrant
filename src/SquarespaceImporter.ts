@@ -1,10 +1,29 @@
 import { JSDOM } from "jsdom";
 import { Post } from "Post";
 import {Tag} from "Tag"
+import {DataContainer} from "DataContainer"
+import {PostTag} from "PostTag"
+import {DatumContainer} from "DatumContainer"
 
 export default class SquarespaceImporter {
-	import = (squarespaceData: string): Post[] =>
-		this._extractItems(squarespaceData).filter(this._isPost).filter(this._isPublished).map(this._convertToPost)
+	import = (squarespaceData: string): DataContainer => {
+		const datumContainers = this._extractItems(squarespaceData).filter(this._isPost).filter(this._isPublished).map(this._convertToDatumContainer)
+
+		return {
+			posts: datumContainers.map((datumContainer) =>
+				datumContainer.post
+			),
+
+			// TODO NEXT: dedupe tags and postTags
+			tags: datumContainers.flatMap((datumContainer) =>
+				datumContainer.tags
+			),
+
+			postTags: datumContainers.flatMap((datumContainer) =>
+				datumContainer.postTags
+			)
+		}
+	}
 
 	_extractItems = (squarespaceData: string) =>
 		Array.from(new JSDOM(
@@ -33,10 +52,7 @@ export default class SquarespaceImporter {
 			slug: item.querySelector("wp\\:post_name")!.textContent!,
 			author: "elle mundy",
 			collection: "Photography",
-			og_type: "article",
-			tags: this._extractCategories(item).map(this._convertToTag).filter((tag: Tag) => {
-				return tag.name != "Photography"
-			})
+			og_type: "article"
 		};
 	}
 
@@ -49,4 +65,26 @@ export default class SquarespaceImporter {
 			attribute.name == "nicename"
 		)[0].value
 	})
+
+	_connectPostTag = (post: Post, tag: Tag): PostTag => ({
+		postSlug: post.slug,
+		tagSlug: tag.slug
+	})
+
+	_convertToDatumContainer = (item: Element): DatumContainer => {
+		const post = this._convertToPost(item)
+		const tags = this
+			._extractCategories(item)
+			.map(this._convertToTag)
+			.filter((tag) =>
+				tag.name != "Photography"
+			)
+
+		return ({
+			post: post,
+			tags: tags,
+			postTags: tags.map((tag): PostTag =>
+				this._connectPostTag(post, tag))
+		})
+	}
 }

@@ -3,21 +3,56 @@ import SquarespaceImporter from "../src/SquarespaceImporter"
 import {JSDOM} from "jsdom"
 import {Post} from "../src/Post"
 import {Tag} from "../src/Tag"
+import {DataContainer} from "../src/DataContainer"
+import {match} from "sinon"
+import {PostTag} from "../src/PostTag"
+import {DatumContainer} from "../src/DatumContainer"
 
 describe("SquarespaceImporter", () => {
 	describe("import", () => {
 		it("should import only posts (and later, tags) from an XML data string", () => {
 			const pubDate = new Date("Mon, 02 Jan 2023 01:08:58 +0000");
-			const expectedPosts: Post[] = [{
-				title: "Rethinking Social Media in 2023: A New Home for my Photos // House of Abundance: Stoop Edition",
-				body: "<article>this is a post</article>",
-				createdAt: pubDate,
-				publishedAt: pubDate,
-				updatedAt: pubDate,
-				slug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
-				author: "elle mundy",
-				collection: "Photography",
-				og_type: "article",
+
+			const expectedDataContainer: DataContainer = {
+				posts: [{
+					title: "Rethinking Social Media in 2023: A New Home for my Photos // House of Abundance: Stoop Edition",
+					body: "<article>this is a post</article>",
+					createdAt: pubDate,
+					publishedAt: pubDate,
+					updatedAt: pubDate,
+					slug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+					author: "elle mundy",
+					collection: "Photography",
+					og_type: "article",
+				}],
+
+				postTags: [
+					{
+						postSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+						tagSlug: "house-of-abundance"
+					},
+					{
+						postSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+						tagSlug: "bed-stuy"
+					},
+					{
+						postSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+						tagSlug: "brooklyn"
+					},
+					{
+						postSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+						tagSlug: "stoop-show"
+					},
+					{
+						postSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+						tagSlug: "poetry-reading"
+					},
+					{
+						postSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+						tagSlug: "live-music"
+					},
+				],
+
 				tags: [
 					{
 						name: "House of Abundance",
@@ -44,11 +79,11 @@ describe("SquarespaceImporter", () => {
 						slug: "live-music"
 					},
 				]
-			}]
+			}
 
 			const squarespaceImporter = new SquarespaceImporter()
 
-			expect(squarespaceImporter.import(squarespaceData)).to.deep.eq(expectedPosts)
+			expect(squarespaceImporter.import(squarespaceData)).to.deep.eq(expectedDataContainer)
 		});
 	})
 
@@ -58,7 +93,7 @@ describe("SquarespaceImporter", () => {
 
 			const items = squarespaceImporter._extractItems(squarespaceData);
 
-			const itemsContents = getItemTextContents(items)
+			const itemsContents = items.map(getItemTextContent)
 			const expectedItemsContents = [pageXmlFragment, publishedPostXmlFragment, draftPostXmlFragment]
 
 			itemsContents.map((itemContent, index) => {
@@ -137,33 +172,7 @@ describe("SquarespaceImporter", () => {
 				slug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
 				author: "elle mundy",
 				collection: "Photography",
-				og_type: "article",
-				tags: [
-					{
-						name: "House of Abundance",
-						slug: "house-of-abundance"
-					},
-					{
-						name: "Bed-Stuy",
-						slug: "bed-stuy"
-					},
-					{
-						name: "Brooklyn",
-						slug: "brooklyn"
-					},
-					{
-						name: "Stoop show",
-						slug: "stoop-show"
-					},
-					{
-						name: "Poetry reading",
-						slug: "poetry-reading"
-					},
-					{
-						name: "Live music",
-						slug: "live-music"
-					}
-				]
+				og_type: "article"
 			}
 
 			expect(squarespaceImporter._convertToPost(item)).to.deep.eq(expectedPost)
@@ -171,7 +180,7 @@ describe("SquarespaceImporter", () => {
 	})
 
 	describe("_extractCategories", () => {
-		it("extract an array of Tags from an xml <item>", () => {
+		it("should extract an array of Tags from an xml <item>", () => {
 			const squarespaceImporter = new SquarespaceImporter()
 
 			const item = new JSDOM(
@@ -213,16 +222,131 @@ describe("SquarespaceImporter", () => {
 			expect(squarespaceImporter._convertToTag(category)).to.deep.eq(expectedTag)
 		})
 	})
+
+	describe("_connectPostTag", () => {
+		it("should connect a post and a tag from an xml <item> to a PostTag", () => {
+			const pubDate = new Date("Mon, 02 Jan 2023 01:08:58 +0000");
+
+			const post: Post = {
+				title: "Rethinking Social Media in 2023: A New Home for my Photos // House of Abundance: Stoop Edition",
+				body: "<article>this is a post</article>",
+				createdAt: pubDate,
+				publishedAt: pubDate,
+				updatedAt: pubDate,
+				slug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+				author: "elle mundy",
+				collection: "Photography",
+				og_type: "article"
+			}
+
+			const tag: Tag = {
+				name: "House of Abundance",
+				slug: "house-of-abundance"
+			}
+
+			const expectedPostTag: PostTag = {
+				postSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+				tagSlug: "house-of-abundance"
+			}
+
+
+			const squarespaceImporter = new SquarespaceImporter()
+
+			expect(squarespaceImporter._connectPostTag(post, tag)).to.deep.eq(expectedPostTag)
+		})
+	})
+
+	describe("_convertToDatumContainer", () => {
+		it("should convert an item to a DatumContainer", () => {
+			const pubDate = new Date("Mon, 02 Jan 2023 01:08:58 +0000");
+
+			const item = new JSDOM(
+				publishedPostXml,
+				{ contentType: "text/xml" }
+			).window.document
+				.querySelector("item")!
+
+			const squarespaceImporter = new SquarespaceImporter()
+
+			const expectedDatumContainer: DatumContainer = {
+				post: {
+					title: "Rethinking Social Media in 2023: A New Home for my Photos // House of Abundance: Stoop Edition",
+					body: "<article>this is a post</article>",
+					createdAt: pubDate,
+					publishedAt: pubDate,
+					updatedAt: pubDate,
+					slug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+					author: "elle mundy",
+					collection: "Photography",
+					og_type: "article",
+				},
+
+				tags: [
+					{
+						name: "House of Abundance",
+						slug: "house-of-abundance"
+					},
+					{
+						name: "Bed-Stuy",
+						slug: "bed-stuy"
+					},
+					{
+						name: "Brooklyn",
+						slug: "brooklyn"
+					},
+					{
+						name: "Stoop show",
+						slug: "stoop-show"
+					},
+					{
+						name: "Poetry reading",
+						slug: "poetry-reading"
+					},
+					{
+						name: "Live music",
+						slug: "live-music"
+					},
+				],
+
+				postTags: [
+					{
+						postSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+						tagSlug: "house-of-abundance"
+					},
+					{
+						postSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+						tagSlug: "bed-stuy"
+					},
+					{
+						postSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+						tagSlug: "brooklyn"
+					},
+					{
+						postSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+						tagSlug: "stoop-show"
+					},
+					{
+						postSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+						tagSlug: "poetry-reading"
+					},
+					{
+						postSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+						tagSlug: "live-music"
+					},
+				]
+			}
+
+			expect(squarespaceImporter._convertToDatumContainer(item)).to.deep.eq(expectedDatumContainer)
+		})
+	})
 })
 
-const getItemTextContents = (items: Element[]) =>
-	items.map(
-		(item: Element) => item.outerHTML
-			.replace(/ xmlns:content="http:\/\/purl.org\/rss\/1.0\/modules\/content\/"/g, "")
-			.replace(/ xmlns:wp=".*"/g, "")
-			.replace(/xmlns:excerpt="http:\/\/wordpress.org\/export\/1.2\/excerpt\/"/g, "")
-			.replace(/ xmlns:dc=".*"/g, "")
-	)
+const getItemTextContent = (item: Element) =>
+	item.outerHTML
+		.replace(/ xmlns:content="http:\/\/purl.org\/rss\/1.0\/modules\/content\/"/g, "")
+		.replace(/ xmlns:wp=".*"/g, "")
+		.replace(/xmlns:excerpt="http:\/\/wordpress.org\/export\/1.2\/excerpt\/"/g, "")
+		.replace(/ xmlns:dc=".*"/g, "")
 
 const preamble = `<?xml version="1.0" encoding="UTF-8"?>
 <rss xmlns:excerpt="http://wordpress.org/export/1.2/excerpt/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:wfw="http://wellformedweb.org/CommentAPI/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:wp="http://wordpress.org/export/1.2/">

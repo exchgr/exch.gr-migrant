@@ -10,5 +10,4 @@ export type Post = {
 	author: string
 	collection: string
 	og_type: string
-	tags: Tag[]
 }

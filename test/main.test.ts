@@ -7,6 +7,7 @@ import SquarespaceImporter from "../src/SquarespaceImporter"
 import FsProxy from "../src/fsProxy"
 import Strapi, {StrapiOptions} from "strapi-sdk-js"
 import {StrapiExporter} from "../src/StrapiExporter"
+import {DataContainer} from "../src/DataContainer"
 
 chai.use(sinonChai)
 chai.use(chaiAsPromised)
@@ -58,56 +59,62 @@ describe("main", () => {
 	})
 
 	it("should process an existing squarespace export xml and export to strapi", async () => {
-			const squarespaceFilename = 'resources/Squarespace-Wordpress-Export-10-12-2023.xml';
-			const squarespaceData = "hi"
-			const fsProxy = createStubInstance(FsProxy)
-			fsProxy.readFileSync.withArgs(squarespaceFilename).returns(Buffer.from(squarespaceData))
+		const squarespaceFilename = 'resources/Squarespace-Wordpress-Export-10-12-2023.xml';
+		const squarespaceData = "hi"
+		const fsProxy = createStubInstance(FsProxy)
+		fsProxy.readFileSync.withArgs(squarespaceFilename).returns(Buffer.from(squarespaceData))
 
-			const argv: string[] = ['-s', squarespaceFilename, '-t', strapiUrl]
+		const argv: string[] = ['-s', squarespaceFilename, '-t', strapiUrl]
 
-			const posts = [
-				{
-					title: "hi",
-					body: "<article>hi</article>",
-					slug: "hi",
-					author: "me",
-					collection: "poasts",
-					og_type: "poast",
-					createdAt: new Date(),
-					updatedAt: new Date(),
-					publishedAt: new Date()
-				},
-				{
-					title: "hey",
-					body: "<article>hey</article>",
-					slug: "hey",
-					author: "me",
-					collection: "poasts",
-					og_type: "poast",
-					createdAt: new Date(),
-					updatedAt: new Date(),
-					publishedAt: new Date()
-				}
-			]
+		const posts = [
+			{
+				title: "hi",
+				body: "<article>hi</article>",
+				slug: "hi",
+				author: "me",
+				collection: "poasts",
+				og_type: "poast",
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				publishedAt: new Date()
+			},
+			{
+				title: "hey",
+				body: "<article>hey</article>",
+				slug: "hey",
+				author: "me",
+				collection: "poasts",
+				og_type: "poast",
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				publishedAt: new Date()
+			}
+		]
 
-			const squarespaceImporter = new SquarespaceImporter()
-			stub(squarespaceImporter, "import").withArgs(squarespaceData).returns(posts)
+		const dataContainer: DataContainer = {
+			posts: posts,
+			tags: [],
+			postTags: []
+		}
 
-			const strapi = new Strapi({ url: strapiUrl })
-			const buildStrapi = (_strapiOptions: StrapiOptions) => strapi
+		const squarespaceImporter = new SquarespaceImporter()
+		stub(squarespaceImporter, "import").withArgs(squarespaceData).returns(dataContainer)
 
-			const strapiExporter = new StrapiExporter(strapi)
-			const buildStrapiExporter = (strapi: Strapi) => strapiExporter
+		const strapi = new Strapi({ url: strapiUrl })
+		const buildStrapi = (_strapiOptions: StrapiOptions) => strapi
 
-			stub(strapiExporter, "export").withArgs(posts).resolves([{
-				data: {},
-				meta: {}
-			}])
+		const strapiExporter = new StrapiExporter(strapi)
+		const buildStrapiExporter = (strapi: Strapi) => strapiExporter
 
-			await main(argv, fsProxy, squarespaceImporter, buildStrapi, buildStrapiExporter)
+		stub(strapiExporter, "export").withArgs(posts).resolves([{
+			data: {},
+			meta: {}
+		}])
 
-			expect(squarespaceImporter.import).to.have.been.calledWith(squarespaceData)
-			expect(strapiExporter.export).to.have.been.calledWith(posts)
+		await main(argv, fsProxy, squarespaceImporter, buildStrapi, buildStrapiExporter)
+
+		expect(squarespaceImporter.import).to.have.been.calledWith(squarespaceData)
+		expect(strapiExporter.export).to.have.been.calledWith(posts)
 		}
 	)
 })
