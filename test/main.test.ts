@@ -7,7 +7,7 @@ import SquarespaceImporter from "../src/SquarespaceImporter"
 import FsProxy from "../src/fsProxy"
 import Strapi, {StrapiOptions} from "strapi-sdk-js"
 import {StrapiExporter} from "../src/StrapiExporter"
-import {DataContainer} from "../src/DataContainer"
+import {DataContainer} from "../src/types/DataContainer"
 
 chai.use(sinonChai)
 chai.use(chaiAsPromised)
@@ -31,7 +31,7 @@ describe("main", () => {
 		const buildStrapi = (_strapiOptions: StrapiOptions) => strapi
 
 		const strapiExporter = new StrapiExporter(strapi)
-		const buildStrapiExporter = (strapi: Strapi) => strapiExporter
+		const buildStrapiExporter = (_: Strapi) => strapiExporter
 
 		expect(main(argv, fsProxy, squarespaceImporter, buildStrapi, buildStrapiExporter)).to.be.rejectedWith(enoent)
 		expect(squarespaceImporter.import).not.to.have.been.called
@@ -53,7 +53,7 @@ describe("main", () => {
 		const buildStrapi = (_strapiOptions: StrapiOptions) => strapi
 
 		const strapiExporter = new StrapiExporter(strapi)
-		const buildStrapiExporter = (strapi: Strapi) => strapiExporter
+		const buildStrapiExporter = (_: Strapi) => strapiExporter
 
 		expect(main(argv, fsProxy, squarespaceImporter, buildStrapi, buildStrapiExporter)).to.be.rejectedWith('Strapi server unspecified.')
 	})

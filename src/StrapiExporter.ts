@@ -1,5 +1,5 @@
-import {Article} from "Article"
-import {Post} from "Post"
+import {Article} from "types/Article"
+import {Post} from "types/Post"
 import Strapi, {StrapiResponse} from "strapi-sdk-js"
 import {partition} from "./lib/util"
 

@@ -7,9 +7,9 @@ import {stub} from "sinon"
 import chai, {expect} from "chai"
 import sinonChai from "sinon-chai"
 import chaiAsPromised from "chai-as-promised"
-import {Post} from "../src/Post"
+import {Post} from "../src/types/Post"
 import {StrapiExporter} from "../src/StrapiExporter"
-import {Article} from "../src/Article"
+import {Article} from "../src/types/Article"
 
 chai.use(sinonChai)
 chai.use(chaiAsPromised)
@@ -86,7 +86,7 @@ describe("StrapiExporter", () => {
 			])
 
 			expect(strapiExporter._findOrInitArticle).to.have.been.calledWith(hiPost)
-			expect(strapiExporter._findOrInitArticle).to.have.been.calledWith(hiPost)
+			expect(strapiExporter._findOrInitArticle).to.have.been.calledWith(heyPost)
 			expect(strapiExporter._articleExists).to.have.been.calledWith(hiArticle)
 			expect(strapiExporter._articleExists).to.have.been.calledWith(heyArticle)
 			expect(strapiExporter._updateArticle).to.have.been.calledWith(hiArticle)
@@ -190,6 +190,48 @@ describe("StrapiExporter", () => {
 			const strapiExporter = new StrapiExporter(strapi)
 
 			expect(await strapiExporter._findOrInitArticle(heyPost)).to.deep.eq(article)
+		})
+
+		it("should rethrow all other errors", async () => {
+			const heySlug = "hey"
+
+			const heyPost: Post = {
+				title: "hey",
+				body: "<article>hey</article>",
+				slug: heySlug,
+				author: "me",
+				collection: "poasts",
+				og_type: "poast",
+				createdAt: date,
+				updatedAt: date,
+				publishedAt: date
+			}
+
+			const heyQueryParams: StrapiRequestParams = {
+				filters: {
+					slug: {
+						$eq: heySlug
+					}
+				}
+			}
+
+			const error = {
+				status: 502,
+				name: "BadGatewayError",
+				message: "Bad Gateway",
+				details: {},
+			}
+
+			const strapi = new Strapi({ url: strapiUrl })
+
+			stub(strapi, "find").withArgs('articles', heyQueryParams).rejects({
+				data: null,
+				error: error,
+			} as StrapiError)
+
+			const strapiExporter = new StrapiExporter(strapi)
+
+			expect(strapiExporter._findOrInitArticle(heyPost)).to.be.rejectedWith(error)
 		})
 	})
 

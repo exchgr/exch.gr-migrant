@@ -1,10 +1,7 @@
 import SquarespaceImporter from "SquarespaceImporter"
 import minimist from "minimist"
 import FsProxy from "fsProxy"
-import {Article} from "Article"
 import {StrapiFactory} from "StrapiFactory"
-import Strapi from "strapi-sdk-js"
-import {StrapiExporter} from "StrapiExporter"
 import {StrapiExporterFactory} from "StrapiExporterFactory"
 
 const main = async (

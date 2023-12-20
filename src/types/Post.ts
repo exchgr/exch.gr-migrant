@@ -1,5 +1,3 @@
-import {Tag} from "Tag"
-
 export type Post = {
 	title: string
 	body: string

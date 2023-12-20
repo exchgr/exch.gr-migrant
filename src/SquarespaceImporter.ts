@@ -1,9 +1,9 @@
 import { JSDOM } from "jsdom";
-import { Post } from "Post";
-import {Tag} from "Tag"
-import {DataContainer} from "DataContainer"
-import {PostTag} from "PostTag"
-import {DatumContainer} from "DatumContainer"
+import {Post} from "types/Post";
+import {Tag} from "types/Tag"
+import {DataContainer} from "types/DataContainer"
+import {PostTag} from "types/PostTag"
+import {DatumContainer} from "types/DatumContainer"
 
 export default class SquarespaceImporter {
 	import = (squarespaceData: string): DataContainer => {

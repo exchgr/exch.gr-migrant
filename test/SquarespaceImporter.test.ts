@@ -1,12 +1,11 @@
 import {expect} from "chai"
 import SquarespaceImporter from "../src/SquarespaceImporter"
 import {JSDOM} from "jsdom"
-import {Post} from "../src/Post"
-import {Tag} from "../src/Tag"
-import {DataContainer} from "../src/DataContainer"
-import {match} from "sinon"
-import {PostTag} from "../src/PostTag"
-import {DatumContainer} from "../src/DatumContainer"
+import {Post} from "../src/types/Post"
+import {Tag} from "../src/types/Tag"
+import {DataContainer} from "../src/types/DataContainer"
+import {PostTag} from "../src/types/PostTag"
+import {DatumContainer} from "../src/types/DatumContainer"
 
 describe("SquarespaceImporter", () => {
 	describe("import", () => {
