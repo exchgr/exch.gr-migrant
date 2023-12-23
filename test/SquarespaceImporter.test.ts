@@ -8,10 +8,11 @@ import {PostTag} from "../src/types/PostTag"
 import {DatumContainer} from "../src/types/DatumContainer"
 
 describe("SquarespaceImporter", () => {
-	describe("import", () => {
-		it("should import only posts (and later, tags) from an XML data string", () => {
-			const pubDate = new Date("Mon, 02 Jan 2023 01:08:58 +0000");
+	const pubDate = new Date("Mon, 02 Jan 2023 01:08:58 +0000");
+	const pubDate2 = new Date("Mon, 03 Jan 2023 01:08:58 +0000")
 
+	describe("import", () => {
+		it("should import only posts, tags, and postTags (deduplicated) from an XML data string", () => {
 			const expectedDataContainer: DataContainer = {
 				posts: [{
 					title: "Rethinking Social Media in 2023: A New Home for my Photos // House of Abundance: Stoop Edition",
@@ -20,6 +21,16 @@ describe("SquarespaceImporter", () => {
 					publishedAt: pubDate,
 					updatedAt: pubDate,
 					slug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+					author: "elle mundy",
+					collection: "Photography",
+					og_type: "article",
+				}, {
+					title: "Another post",
+					body: "<article>Another post</article>",
+					createdAt: pubDate2,
+					publishedAt: pubDate2,
+					updatedAt: pubDate2,
+					slug: "another-post-2023-12-22",
 					author: "elle mundy",
 					collection: "Photography",
 					og_type: "article",
@@ -50,6 +61,10 @@ describe("SquarespaceImporter", () => {
 						postSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
 						tagSlug: "live-music"
 					},
+					{
+						postSlug: "another-post-2023-12-22",
+						tagSlug: "bed-stuy"
+					}
 				],
 
 				tags: [
@@ -93,7 +108,7 @@ describe("SquarespaceImporter", () => {
 			const items = squarespaceImporter._extractItems(squarespaceData);
 
 			const itemsContents = items.map(getItemTextContent)
-			const expectedItemsContents = [pageXmlFragment, publishedPostXmlFragment, draftPostXmlFragment]
+			const expectedItemsContents = [pageXmlFragment, publishedPostXmlFragment, publishedPost2XmlFragment, draftPostXmlFragment]
 
 			itemsContents.map((itemContent, index) => {
 				expect(itemContent).to.eq(expectedItemsContents[index])
@@ -251,7 +266,7 @@ describe("SquarespaceImporter", () => {
 
 			const squarespaceImporter = new SquarespaceImporter()
 
-			expect(squarespaceImporter._connectPostTag(post, tag)).to.deep.eq(expectedPostTag)
+			expect(squarespaceImporter._connectPostTag(post)(tag)).to.deep.eq(expectedPostTag)
 		})
 	})
 
@@ -305,7 +320,97 @@ describe("SquarespaceImporter", () => {
 						name: "Live music",
 						slug: "live-music"
 					},
+				]
+			}
+
+			expect(squarespaceImporter._convertToDatumContainer(item)).to.deep.eq(expectedDatumContainer)
+		})
+	})
+
+	describe("_collateToDataContainer", () => {
+		it("should collate an array of DatumContainers into a DataContainer", () => {
+			const datumContainers: DatumContainer[] = [{
+				post: {
+					title: "Rethinking Social Media in 2023: A New Home for my Photos // House of Abundance: Stoop Edition",
+					body: "<article>this is a post</article>",
+					createdAt: pubDate,
+					publishedAt: pubDate,
+					updatedAt: pubDate,
+					slug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+					author: "elle mundy",
+					collection: "Photography",
+					og_type: "article",
+				},
+
+				tags: [
+					{
+						name: "House of Abundance",
+						slug: "house-of-abundance"
+					},
+					{
+						name: "Bed-Stuy",
+						slug: "bed-stuy"
+					},
+					{
+						name: "Brooklyn",
+						slug: "brooklyn"
+					},
+					{
+						name: "Stoop show",
+						slug: "stoop-show"
+					},
+					{
+						name: "Poetry reading",
+						slug: "poetry-reading"
+					},
+					{
+						name: "Live music",
+						slug: "live-music"
+					},
 				],
+			},{
+				post: {
+					title: "Another post",
+					body: "<article>Another post</article>",
+					createdAt: pubDate2,
+					publishedAt: pubDate2,
+					updatedAt: pubDate2,
+					slug: "another-post-2023-12-22",
+					author: "elle mundy",
+					collection: "Photography",
+					og_type: "article",
+				},
+
+				tags: [
+					{
+						name: "Bed-Stuy",
+						slug: "bed-stuy"
+					},
+				],
+			}]
+
+			const expectedDataContainer: DataContainer = {
+				posts: [{
+					title: "Rethinking Social Media in 2023: A New Home for my Photos // House of Abundance: Stoop Edition",
+					body: "<article>this is a post</article>",
+					createdAt: pubDate,
+					publishedAt: pubDate,
+					updatedAt: pubDate,
+					slug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+					author: "elle mundy",
+					collection: "Photography",
+					og_type: "article",
+				}, {
+					title: "Another post",
+					body: "<article>Another post</article>",
+					createdAt: pubDate2,
+					publishedAt: pubDate2,
+					updatedAt: pubDate2,
+					slug: "another-post-2023-12-22",
+					author: "elle mundy",
+					collection: "Photography",
+					og_type: "article",
+				}],
 
 				postTags: [
 					{
@@ -332,10 +437,43 @@ describe("SquarespaceImporter", () => {
 						postSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
 						tagSlug: "live-music"
 					},
+					{
+						postSlug: "another-post-2023-12-22",
+						tagSlug: "bed-stuy"
+					}
+				],
+
+				tags: [
+					{
+						name: "House of Abundance",
+						slug: "house-of-abundance"
+					},
+					{
+						name: "Bed-Stuy",
+						slug: "bed-stuy"
+					},
+					{
+						name: "Brooklyn",
+						slug: "brooklyn"
+					},
+					{
+						name: "Stoop show",
+						slug: "stoop-show"
+					},
+					{
+						name: "Poetry reading",
+						slug: "poetry-reading"
+					},
+					{
+						name: "Live music",
+						slug: "live-music"
+					},
 				]
 			}
 
-			expect(squarespaceImporter._convertToDatumContainer(item)).to.deep.eq(expectedDatumContainer)
+			const squarespaceImporter = new SquarespaceImporter()
+
+			expect(squarespaceImporter._convertToDataContainer(datumContainers)).to.deep.eq(expectedDataContainer)
 		})
 	})
 })
@@ -361,7 +499,9 @@ const pageXml = `${preamble}
 				${pageXmlFragment}
 ${postamble}`
 
-const publishedPostCategoryData = [
+type CategoryXmlFragmentParams = { domain: any; nicename: any; cdata: any }
+
+const publishedPostCategoryData: CategoryXmlFragmentParams[] = [
 	{domain: "post_tag", nicename: "house-of-abundance", cdata: "House of Abundance"},
 	{domain: "post_tag", nicename: "bed-stuy", cdata: "Bed-Stuy"},
 	{domain: "post_tag", nicename: "brooklyn", cdata: "Brooklyn"},
@@ -371,11 +511,15 @@ const publishedPostCategoryData = [
 	{domain: "post_tag", nicename: "photography", cdata: "Photography"}
 ]
 
-const publishedPostCategoryXmlFragments = publishedPostCategoryData.map((publishedPostCategoryDatum) =>
-	`<category domain="${publishedPostCategoryDatum.domain}" nicename="${publishedPostCategoryDatum.nicename}"><![CDATA[${publishedPostCategoryDatum.cdata}]]></category>`
-)
+const publishedPost2CategoryData = [
+	{domain: "post_tag", nicename: "bed-stuy", cdata: "Bed-Stuy"},
+]
 
-const publishedPostCategoriesXmlFragment = publishedPostCategoryXmlFragments.join("            ")
+const categoryXmlFragment = (publishedPostCategoryDatum: CategoryXmlFragmentParams) =>
+	`<category domain="${publishedPostCategoryDatum.domain}" nicename="${publishedPostCategoryDatum.nicename}"><![CDATA[${publishedPostCategoryDatum.cdata}]]></category>`
+
+const publishedPostCategoriesXmlFragment = publishedPostCategoryData.map(categoryXmlFragment).join("            ")
+const publishedPostCategories2XmlFragment = publishedPost2CategoryData.map(categoryXmlFragment).join("            ")
 
 const publishedPostXmlFragment = `<item>
             <title>Rethinking Social Media in 2023: A New Home for my Photos // House of Abundance: Stoop Edition</title>
@@ -401,6 +545,27 @@ const publishedPostXmlFragment = `<item>
 const publishedPostXml = `${preamble}
 				${publishedPostXmlFragment}
 ${postamble}`
+
+const publishedPost2XmlFragment = `<item>
+            <title>Another post</title>
+            <link>/fotoblog/another-post-2023-12-22</link>
+            <content:encoded><![CDATA[<article>Another post</article>]]></content:encoded>
+            <excerpt:encoded />
+            <wp:post_name>another-post-2023-12-22</wp:post_name>
+            <wp:post_type>post</wp:post_type>
+            <wp:post_id>1</wp:post_id>
+            <wp:status>publish</wp:status>
+            <pubDate>Mon, 03 Jan 2023 01:08:58 +0000</pubDate>
+            <wp:post_date>2023-01-03 01:08:58</wp:post_date>
+            <wp:post_date_gmt>2023-01-03 01:08:58</wp:post_date_gmt>
+            ${publishedPostCategories2XmlFragment}
+            <dc:creator>exchgr@icloud.com</dc:creator>
+            <wp:comment_status>closed</wp:comment_status>
+            <wp:postmeta>
+                <wp:meta_key>_thumbnail_id</wp:meta_key>
+                <wp:meta_value><![CDATA[2]]></wp:meta_value>
+            </wp:postmeta>
+        </item>`
 
 const draftPostXmlFragment = `<item>
             <title>DRAFT: Rethinking Social Media in 2023: A New Home for my Photos // House of Abundance: Stoop Edition</title>
@@ -436,5 +601,6 @@ ${postamble}`
 const squarespaceData = `${preamble}
     		${pageXmlFragment}
     		${publishedPostXmlFragment}
+    		${publishedPost2XmlFragment}
     		${draftPostXmlFragment}
 ${postamble}`

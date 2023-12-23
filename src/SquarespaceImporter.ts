@@ -1,29 +1,19 @@
-import { JSDOM } from "jsdom";
-import {Post} from "types/Post";
+import {JSDOM} from "jsdom"
+import {Post} from "types/Post"
 import {Tag} from "types/Tag"
 import {DataContainer} from "types/DataContainer"
 import {PostTag} from "types/PostTag"
 import {DatumContainer} from "types/DatumContainer"
 
 export default class SquarespaceImporter {
-	import = (squarespaceData: string): DataContainer => {
-		const datumContainers = this._extractItems(squarespaceData).filter(this._isPost).filter(this._isPublished).map(this._convertToDatumContainer)
-
-		return {
-			posts: datumContainers.map((datumContainer) =>
-				datumContainer.post
-			),
-
-			// TODO NEXT: dedupe tags and postTags
-			tags: datumContainers.flatMap((datumContainer) =>
-				datumContainer.tags
-			),
-
-			postTags: datumContainers.flatMap((datumContainer) =>
-				datumContainer.postTags
-			)
-		}
-	}
+	import = (squarespaceData: string): DataContainer =>
+		this._convertToDataContainer(
+			this
+				._extractItems(squarespaceData)
+				.filter(this._isPost)
+				.filter(this._isPublished)
+				.map(this._convertToDatumContainer)
+		)
 
 	_extractItems = (squarespaceData: string) =>
 		Array.from(new JSDOM(
@@ -66,11 +56,6 @@ export default class SquarespaceImporter {
 		)[0].value
 	})
 
-	_connectPostTag = (post: Post, tag: Tag): PostTag => ({
-		postSlug: post.slug,
-		tagSlug: tag.slug
-	})
-
 	_convertToDatumContainer = (item: Element): DatumContainer => {
 		const post = this._convertToPost(item)
 		const tags = this
@@ -83,8 +68,33 @@ export default class SquarespaceImporter {
 		return ({
 			post: post,
 			tags: tags,
-			postTags: tags.map((tag): PostTag =>
-				this._connectPostTag(post, tag))
 		})
 	}
+
+	_convertToDataContainer = (datumContainers: DatumContainer[]): DataContainer => {
+		const seenTagSlugs: string[] = []
+
+		return {
+			posts: datumContainers.map((datumContainer) =>
+				datumContainer.post
+			),
+
+			tags: datumContainers.flatMap((datumContainer) =>
+				datumContainer.tags
+			).filter((tag) =>
+				seenTagSlugs.includes(tag.slug) ? false : seenTagSlugs.push(tag.slug)
+			),
+
+			postTags: datumContainers.flatMap((datumContainer) =>
+				datumContainer.tags.map(this._connectPostTag(datumContainer.post))
+			)
+		}
+	}
+
+	_connectPostTag = (post: Post) =>
+		(tag: Tag) =>
+			({
+				postSlug: post.slug,
+				tagSlug: tag.slug
+			})
 }

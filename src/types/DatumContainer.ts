@@ -5,5 +5,4 @@ import {Post} from "types/Post"
 export type DatumContainer = {
 	post: Post,
 	tags: Tag[],
-	postTags: PostTag[]
 }
