@@ -1,7 +1,7 @@
-import {Post} from "types/Post"
+import {ArticleAttributes} from "types/ArticleAttributes"
 
 export type Article = {
 	id?: number
-	attributes: Post
+	attributes: ArticleAttributes
 	meta: Record<string, unknown>
 }

@@ -7,9 +7,12 @@ import {stub} from "sinon"
 import chai, {expect} from "chai"
 import sinonChai from "sinon-chai"
 import chaiAsPromised from "chai-as-promised"
-import {Post} from "../src/types/Post"
+import {ArticleAttributes} from "../src/types/ArticleAttributes"
 import {StrapiExporter} from "../src/StrapiExporter"
 import {Article} from "../src/types/Article"
+import {TagAttributes} from "../src/types/TagAttributes"
+import {Tag} from "../src/types/Tag"
+import {DataContainer} from "../src/types/DataContainer"
 
 chai.use(sinonChai)
 chai.use(chaiAsPromised)
@@ -22,7 +25,7 @@ describe("StrapiExporter", () => {
 			const hiSlug = "hi"
 			const heySlug = "hey"
 
-			const hiPost: Post = {
+			const hiArticleAttributes: ArticleAttributes = {
 				title: "hi",
 				body: "<article>hi</article>",
 				slug: hiSlug,
@@ -34,7 +37,7 @@ describe("StrapiExporter", () => {
 				publishedAt: new Date()
 			}
 
-			const heyPost: Post = {
+			const heyArticleAttributes: ArticleAttributes = {
 				title: "hey",
 				body: "<article>hey</article>",
 				slug: heySlug,
@@ -46,25 +49,65 @@ describe("StrapiExporter", () => {
 				publishedAt: new Date()
 			}
 
+			const greetingsTagSlug = "greetings"
+
+			const greetingsTagAttributes: TagAttributes = {
+				name: "Greetings",
+				slug: greetingsTagSlug
+			}
+
+			const greetingsTag: Tag = {
+				id: 1,
+				attributes: greetingsTagAttributes,
+				meta: {}
+			}
+
+			const casualGreetingsTagSlug = "casual-greetings"
+
+			const casualGreetingsTagAttributes: TagAttributes = {
+				name: "Casual greetings",
+				slug: casualGreetingsTagSlug
+			}
+
+			const casualGreetingsTag: Tag = {
+				id: undefined,
+				attributes: casualGreetingsTagAttributes,
+				meta: {}
+			}
+
+			const dataContainer: DataContainer = {
+				articleAttributesCollection: [
+					hiArticleAttributes,
+					heyArticleAttributes
+				],
+				tagAttributesCollection: [
+					greetingsTagAttributes,
+					casualGreetingsTagAttributes,
+				],
+				articleTags: [
+
+				]
+			}
+
 			const strapi = new Strapi({ url: strapiUrl })
 
 			const strapiExporter = new StrapiExporter(strapi)
 
 			const hiArticle = {
 				id: 12345,
-				attributes: hiPost,
+				attributes: hiArticleAttributes,
 				meta: {}
 			}
 
 			const heyArticle = {
-				attributes: heyPost,
+				attributes: heyArticleAttributes,
 				meta: {}
 
 			}
 
 			stub(strapiExporter, "_findOrInitArticle")
-				.withArgs(hiPost).resolves(hiArticle)
-				.withArgs(heyPost).resolves(heyArticle)
+				.withArgs(hiArticleAttributes).resolves(hiArticle)
+				.withArgs(heyArticleAttributes).resolves(heyArticle)
 
 			stub(strapiExporter, "_articleExists")
 				.withArgs(hiArticle).returns(true)
@@ -80,29 +123,34 @@ describe("StrapiExporter", () => {
 				meta: {}
 			})
 
-			await strapiExporter.export([
-				hiPost,
-				heyPost
-			])
+			stub(strapiExporter, "_findOrInitTag")
+				.withArgs(greetingsTagAttributes).resolves(greetingsTag)
+				.withArgs(casualGreetingsTagAttributes).resolves(casualGreetingsTag)
 
-			expect(strapiExporter._findOrInitArticle).to.have.been.calledWith(hiPost)
-			expect(strapiExporter._findOrInitArticle).to.have.been.calledWith(heyPost)
+			await strapiExporter.export(dataContainer)
+
+			expect(strapiExporter._findOrInitArticle).to.have.been.calledWith(hiArticleAttributes)
+			expect(strapiExporter._findOrInitArticle).to.have.been.calledWith(heyArticleAttributes)
 			expect(strapiExporter._articleExists).to.have.been.calledWith(hiArticle)
 			expect(strapiExporter._articleExists).to.have.been.calledWith(heyArticle)
 			expect(strapiExporter._updateArticle).to.have.been.calledWith(hiArticle)
 			expect(strapiExporter._createArticle).to.have.been.calledWith(heyArticle)
+			expect(strapiExporter._findOrInitTag).to.have.been.calledWith(greetingsTagAttributes)
+			expect(strapiExporter._findOrInitTag).to.have.been.calledWith(casualGreetingsTagAttributes)
+			// expect(strapiExporter._createTag).to.have.been.calledWith(greetingsTag)
+			// expect(strapiExporter._updateTag).to.have.been.calledWith(casualGreetingsTag)
 		})
 	})
 
 	describe("_findOrInitArticle", () => {
 		const date = new Date()
 
-		it("should return an existing article, updated with incoming post data", async () => {
+		it("should return an existing article, updated with incoming articleAttributes data", async () => {
 			const id = 12345
 
 			const hiSlug = "hi"
 
-			const hiPost: Post = {
+			const hiArticleAttributes: ArticleAttributes = {
 				title: "hi",
 				body: "<article>hi</article>",
 				slug: hiSlug,
@@ -124,7 +172,7 @@ describe("StrapiExporter", () => {
 
 			const article: Article = {
 				id: id,
-				attributes: hiPost,
+				attributes: hiArticleAttributes,
 				meta: {}
 			}
 
@@ -143,13 +191,13 @@ describe("StrapiExporter", () => {
 
 			const strapiExporter = new StrapiExporter(strapi)
 
-			expect(await strapiExporter._findOrInitArticle(hiPost)).to.deep.eq(article)
+			expect(await strapiExporter._findOrInitArticle(hiArticleAttributes)).to.deep.eq(article)
 		})
 
 		it("should return a new article if one doesn't exist", async () => {
 			const heySlug = "hey"
 
-			const heyPost: Post = {
+			const heyArticleAttributes: ArticleAttributes = {
 				title: "hey",
 				body: "<article>hey</article>",
 				slug: heySlug,
@@ -171,7 +219,7 @@ describe("StrapiExporter", () => {
 
 			const article: Article = {
 				id: undefined,
-				attributes: heyPost,
+				attributes: heyArticleAttributes,
 				meta: {}
 			}
 
@@ -189,13 +237,13 @@ describe("StrapiExporter", () => {
 
 			const strapiExporter = new StrapiExporter(strapi)
 
-			expect(await strapiExporter._findOrInitArticle(heyPost)).to.deep.eq(article)
+			expect(await strapiExporter._findOrInitArticle(heyArticleAttributes)).to.deep.eq(article)
 		})
 
 		it("should rethrow all other errors", async () => {
 			const heySlug = "hey"
 
-			const heyPost: Post = {
+			const heyArticleAttributes: ArticleAttributes = {
 				title: "hey",
 				body: "<article>hey</article>",
 				slug: heySlug,
@@ -231,13 +279,13 @@ describe("StrapiExporter", () => {
 
 			const strapiExporter = new StrapiExporter(strapi)
 
-			expect(strapiExporter._findOrInitArticle(heyPost)).to.be.rejectedWith(error)
+			expect(strapiExporter._findOrInitArticle(heyArticleAttributes)).to.be.rejectedWith(error)
 		})
 	})
 
 	describe("_createArticle", () => {
 		it("should create a new article", () => {
-			const heyPost: Post = {
+			const heyArticleAttributes: ArticleAttributes = {
 				title: "hey",
 				body: "<article>hey</article>",
 				slug: "hey",
@@ -251,13 +299,13 @@ describe("StrapiExporter", () => {
 
 			const article: Article = {
 				id: undefined,
-				attributes: heyPost,
+				attributes: heyArticleAttributes,
 				meta: {}
 			}
 
 			const strapi = new Strapi({ url: strapiUrl })
 
-			stub(strapi, "create").withArgs('articles', heyPost).resolves({
+			stub(strapi, "create").withArgs('articles', heyArticleAttributes).resolves({
 				data: {},
 				meta: {}
 			})
@@ -266,7 +314,7 @@ describe("StrapiExporter", () => {
 
 			strapiExporter._createArticle(article)
 
-			expect(strapi.create).to.have.been.calledWith('articles', heyPost)
+			expect(strapi.create).to.have.been.calledWith('articles', heyArticleAttributes)
 		})
 	})
 
@@ -274,7 +322,7 @@ describe("StrapiExporter", () => {
 		it("should update an existing article", () => {
 			const id = 12345
 
-			const hiPost: Post = {
+			const hiArticleAttributes: ArticleAttributes = {
 				title: "hi",
 				body: "<article>hi</article>",
 				slug: "hi",
@@ -288,13 +336,13 @@ describe("StrapiExporter", () => {
 
 			const article: Article = {
 				id: id,
-				attributes: hiPost,
+				attributes: hiArticleAttributes,
 				meta: {}
 			}
 
 			const strapi = new Strapi({url: strapiUrl})
 
-			stub(strapi, "update").withArgs('articles', id, hiPost).resolves({
+			stub(strapi, "update").withArgs('articles', id, hiArticleAttributes).resolves({
 				data: {},
 				meta: {}
 			})
@@ -303,7 +351,7 @@ describe("StrapiExporter", () => {
 
 			strapiExporter._updateArticle(article)
 
-			expect(strapi.update).to.have.been.calledWith('articles', id, hiPost)
+			expect(strapi.update).to.have.been.calledWith('articles', id, hiArticleAttributes)
 		})
 	})
 
@@ -353,6 +401,126 @@ describe("StrapiExporter", () => {
 			const strapiExporter = new StrapiExporter(strapi)
 
 			expect(strapiExporter._articleExists(article)).to.be.false
+		})
+	})
+
+	describe("_findOrInitTag", () => {
+		const date = new Date()
+
+		it("should return an existing tag, updated with incoming tagAttributes data", async () => {
+			const id = 12345
+
+			const hiSlug = "hi"
+
+			const hiTagAttributes: TagAttributes = {
+				name: hiSlug,
+				slug: hiSlug
+			}
+
+			const hiQueryParams: StrapiRequestParams = {
+				filters: {
+					slug: {
+						$eq: hiSlug
+					}
+				}
+			}
+
+			const hiTag: Tag = {
+				id: id,
+				attributes: hiTagAttributes,
+				meta: {}
+			}
+
+			const strapi = new Strapi({ url: strapiUrl })
+
+			stub(strapi, "find").withArgs('tags', hiQueryParams).resolves({
+				data: [{
+					id: id,
+					attributes: {
+						slug: hiSlug
+					},
+					meta: {}
+				}],
+				meta: {}
+			} as StrapiResponse<Tag[]>)
+
+			const strapiExporter = new StrapiExporter(strapi)
+
+			expect(await strapiExporter._findOrInitTag(hiTagAttributes)).to.deep.eq(hiTag)
+		})
+
+		it("should return a new tag if one doesn't exist", async () => {
+			const heySlug = "hey"
+
+			const heyTagAttributes: TagAttributes = {
+				name: "hey",
+				slug: heySlug
+			}
+
+			const heyQueryParams: StrapiRequestParams = {
+				filters: {
+					slug: {
+						$eq: heySlug
+					}
+				}
+			}
+
+			const heyTag: Tag = {
+				id: undefined,
+				attributes: heyTagAttributes,
+				meta: {}
+			}
+
+			const strapi = new Strapi({ url: strapiUrl })
+
+			stub(strapi, "find").withArgs('tags', heyQueryParams).rejects({
+				data: null,
+				error: {
+					status: 404,
+					name: "NotFoundError",
+					message: "Not Found",
+					details: {},
+				},
+			} as StrapiError)
+
+			const strapiExporter = new StrapiExporter(strapi)
+
+			expect(await strapiExporter._findOrInitTag(heyTagAttributes)).to.deep.eq(heyTag)
+		})
+
+		it("should rethrow all other errors", async () => {
+			const heySlug = "hey"
+
+			const heyTagAttributes: TagAttributes = {
+				name: "hey",
+				slug: heySlug,
+			}
+
+			const heyQueryParams: StrapiRequestParams = {
+				filters: {
+					slug: {
+						$eq: heySlug
+					}
+				}
+			}
+
+			const error = {
+				status: 502,
+				name: "BadGatewayError",
+				message: "Bad Gateway",
+				details: {},
+			}
+
+			const strapi = new Strapi({ url: strapiUrl })
+
+			stub(strapi, "find").withArgs('tags', heyQueryParams).rejects({
+				data: null,
+				error: error,
+			} as StrapiError)
+
+			const strapiExporter = new StrapiExporter(strapi)
+
+			expect(strapiExporter._findOrInitTag(heyTagAttributes)).to.be.rejectedWith(error)
 		})
 	})
 })

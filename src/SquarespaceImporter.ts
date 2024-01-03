@@ -1,8 +1,8 @@
 import {JSDOM} from "jsdom"
-import {Post} from "types/Post"
-import {Tag} from "types/Tag"
+import {ArticleAttributes} from "types/ArticleAttributes"
+import {TagAttributes} from "types/TagAttributes"
 import {DataContainer} from "types/DataContainer"
-import {PostTag} from "types/PostTag"
+import {ArticleTag} from "types/ArticleTag"
 import {DatumContainer} from "types/DatumContainer"
 
 export default class SquarespaceImporter {
@@ -30,7 +30,7 @@ export default class SquarespaceImporter {
 	_isPublished = (item: Element) =>
 		item.querySelector("wp\\:status")?.textContent == "publish"
 
-	_convertToPost = (item: Element): Post => {
+	_convertToArticleAttributes = (item: Element): ArticleAttributes => {
 		const pubDate = new Date(item.querySelector("pubDate")!.textContent!);
 
 		return {
@@ -49,7 +49,7 @@ export default class SquarespaceImporter {
 	_extractCategories = (item: Element): Element[] =>
 		Array.from(item.querySelectorAll('category[domain="post_tag"]'))
 
-	_convertToTag = (category: Element): Tag => ({
+	_convertToTagAttributes = (category: Element): TagAttributes => ({
 		name: Array.from(category.childNodes)[0].textContent!,
 		slug: Array.from(category.attributes).filter((attribute) =>
 			attribute.name == "nicename"
@@ -57,17 +57,17 @@ export default class SquarespaceImporter {
 	})
 
 	_convertToDatumContainer = (item: Element): DatumContainer => {
-		const post = this._convertToPost(item)
-		const tags = this
+		const articleAttributes = this._convertToArticleAttributes(item)
+		const tagAttributesCollection = this
 			._extractCategories(item)
-			.map(this._convertToTag)
-			.filter((tag) =>
-				tag.name != "Photography"
+			.map(this._convertToTagAttributes)
+			.filter((tagAttributes) =>
+				tagAttributes.name != "Photography"
 			)
 
 		return ({
-			post: post,
-			tags: tags,
+			articleAttributes,
+			tagAttributesCollection,
 		})
 	}
 
@@ -75,26 +75,26 @@ export default class SquarespaceImporter {
 		const seenTagSlugs: string[] = []
 
 		return {
-			posts: datumContainers.map((datumContainer) =>
-				datumContainer.post
+			articleAttributesCollection: datumContainers.map((datumContainer) =>
+				datumContainer.articleAttributes
 			),
 
-			tags: datumContainers.flatMap((datumContainer) =>
-				datumContainer.tags
-			).filter((tag) =>
-				seenTagSlugs.includes(tag.slug) ? false : seenTagSlugs.push(tag.slug)
+			tagAttributesCollection: datumContainers.flatMap((datumContainer) =>
+				datumContainer.tagAttributesCollection
+			).filter((tagAttributes) =>
+				seenTagSlugs.includes(tagAttributes.slug) ? false : seenTagSlugs.push(tagAttributes.slug)
 			),
 
-			postTags: datumContainers.flatMap((datumContainer) =>
-				datumContainer.tags.map(this._connectPostTag(datumContainer.post))
+			articleTags: datumContainers.flatMap((datumContainer) =>
+				datumContainer.tagAttributesCollection.map(this._connectArticleTag(datumContainer.articleAttributes))
 			)
 		}
 	}
 
-	_connectPostTag = (post: Post) =>
-		(tag: Tag) =>
+	_connectArticleTag = (articleAttributes: ArticleAttributes) =>
+		(tagAttributes: TagAttributes): ArticleTag =>
 			({
-				postSlug: post.slug,
-				tagSlug: tag.slug
+				articleSlug: articleAttributes.slug,
+				tagSlug: tagAttributes.slug
 			})
 }

@@ -1,8 +1,8 @@
-import {PostTag} from "types/PostTag"
-import {Tag} from "types/Tag"
-import {Post} from "types/Post"
+import {ArticleTag} from "types/ArticleTag"
+import {TagAttributes} from "types/TagAttributes"
+import {ArticleAttributes} from "types/ArticleAttributes"
 
 export type DatumContainer = {
-	post: Post,
-	tags: Tag[],
+	articleAttributes: ArticleAttributes,
+	tagAttributesCollection: TagAttributes[],
 }

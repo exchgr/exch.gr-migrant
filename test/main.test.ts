@@ -66,35 +66,10 @@ describe("main", () => {
 
 		const argv: string[] = ['-s', squarespaceFilename, '-t', strapiUrl]
 
-		const posts = [
-			{
-				title: "hi",
-				body: "<article>hi</article>",
-				slug: "hi",
-				author: "me",
-				collection: "poasts",
-				og_type: "poast",
-				createdAt: new Date(),
-				updatedAt: new Date(),
-				publishedAt: new Date()
-			},
-			{
-				title: "hey",
-				body: "<article>hey</article>",
-				slug: "hey",
-				author: "me",
-				collection: "poasts",
-				og_type: "poast",
-				createdAt: new Date(),
-				updatedAt: new Date(),
-				publishedAt: new Date()
-			}
-		]
-
 		const dataContainer: DataContainer = {
-			posts: posts,
-			tags: [],
-			postTags: []
+			articleAttributesCollection: [],
+			tagAttributesCollection: [],
+			articleTags: []
 		}
 
 		const squarespaceImporter = new SquarespaceImporter()
@@ -106,7 +81,7 @@ describe("main", () => {
 		const strapiExporter = new StrapiExporter(strapi)
 		const buildStrapiExporter = (strapi: Strapi) => strapiExporter
 
-		stub(strapiExporter, "export").withArgs(posts).resolves([{
+		stub(strapiExporter, "export").withArgs(dataContainer).resolves([{
 			data: {},
 			meta: {}
 		}])
@@ -114,7 +89,7 @@ describe("main", () => {
 		await main(argv, fsProxy, squarespaceImporter, buildStrapi, buildStrapiExporter)
 
 		expect(squarespaceImporter.import).to.have.been.calledWith(squarespaceData)
-		expect(strapiExporter.export).to.have.been.calledWith(posts)
+		expect(strapiExporter.export).to.have.been.calledWith(dataContainer)
 		}
 	)
 })

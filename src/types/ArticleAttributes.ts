@@ -1,4 +1,4 @@
-export type Post = {
+export type ArticleAttributes = {
 	title: string
 	body: string
 	createdAt: Date

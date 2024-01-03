@@ -30,7 +30,7 @@ const main = async (
 
 		const strapiExporter = buildStrapiExporter(strapi)
 
-		await strapiExporter.export(dataContainer.posts)
+		await strapiExporter.export(dataContainer)
 	}
 }
 

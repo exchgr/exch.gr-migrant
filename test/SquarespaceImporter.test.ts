@@ -1,10 +1,10 @@
 import {expect} from "chai"
 import SquarespaceImporter from "../src/SquarespaceImporter"
 import {JSDOM} from "jsdom"
-import {Post} from "../src/types/Post"
-import {Tag} from "../src/types/Tag"
+import {ArticleAttributes} from "../src/types/ArticleAttributes"
+import {TagAttributes} from "../src/types/TagAttributes"
 import {DataContainer} from "../src/types/DataContainer"
-import {PostTag} from "../src/types/PostTag"
+import {ArticleTag} from "../src/types/ArticleTag"
 import {DatumContainer} from "../src/types/DatumContainer"
 
 describe("SquarespaceImporter", () => {
@@ -14,7 +14,7 @@ describe("SquarespaceImporter", () => {
 	describe("import", () => {
 		it("should import only posts, tags, and postTags (deduplicated) from an XML data string", () => {
 			const expectedDataContainer: DataContainer = {
-				posts: [{
+				articleAttributesCollection: [{
 					title: "Rethinking Social Media in 2023: A New Home for my Photos // House of Abundance: Stoop Edition",
 					body: "<article>this is a post</article>",
 					createdAt: pubDate,
@@ -36,38 +36,38 @@ describe("SquarespaceImporter", () => {
 					og_type: "article",
 				}],
 
-				postTags: [
+				articleTags: [
 					{
-						postSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+						articleSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
 						tagSlug: "house-of-abundance"
 					},
 					{
-						postSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+						articleSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
 						tagSlug: "bed-stuy"
 					},
 					{
-						postSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+						articleSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
 						tagSlug: "brooklyn"
 					},
 					{
-						postSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+						articleSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
 						tagSlug: "stoop-show"
 					},
 					{
-						postSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+						articleSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
 						tagSlug: "poetry-reading"
 					},
 					{
-						postSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+						articleSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
 						tagSlug: "live-music"
 					},
 					{
-						postSlug: "another-post-2023-12-22",
+						articleSlug: "another-post-2023-12-22",
 						tagSlug: "bed-stuy"
 					}
 				],
 
-				tags: [
+				tagAttributesCollection: [
 					{
 						name: "House of Abundance",
 						slug: "house-of-abundance"
@@ -177,7 +177,7 @@ describe("SquarespaceImporter", () => {
 
 			const pubDate = new Date("Mon, 02 Jan 2023 01:08:58 +0000");
 
-			const expectedPost: Post = {
+			const expectedPost: ArticleAttributes = {
 				title: "Rethinking Social Media in 2023: A New Home for my Photos // House of Abundance: Stoop Edition",
 				body: "<article>this is a post</article>",
 				createdAt: pubDate,
@@ -189,7 +189,7 @@ describe("SquarespaceImporter", () => {
 				og_type: "article"
 			}
 
-			expect(squarespaceImporter._convertToPost(item)).to.deep.eq(expectedPost)
+			expect(squarespaceImporter._convertToArticleAttributes(item)).to.deep.eq(expectedPost)
 		})
 	})
 
@@ -218,7 +218,7 @@ describe("SquarespaceImporter", () => {
 	})
 
 	describe("_convertToTag", () => {
-		it('should convert an xml <category domain="post_tag"> to a Tag', () => {
+		it('should convert an xml <category domain="post_tag"> to TagAttributes', () => {
 			const squarespaceImporter = new SquarespaceImporter()
 
 			const category = new JSDOM(
@@ -228,20 +228,20 @@ describe("SquarespaceImporter", () => {
 				.querySelector("item")!
 				.querySelector('category[domain="post_tag"]')!
 
-			const expectedTag: Tag = {
+			const expectedTagAttributes: TagAttributes = {
 				name: "House of Abundance",
 				slug: "house-of-abundance"
 			}
 
-			expect(squarespaceImporter._convertToTag(category)).to.deep.eq(expectedTag)
+			expect(squarespaceImporter._convertToTagAttributes(category)).to.deep.eq(expectedTagAttributes)
 		})
 	})
 
-	describe("_connectPostTag", () => {
-		it("should connect a post and a tag from an xml <item> to a PostTag", () => {
+	describe("_connectArticleTag", () => {
+		it("should connect an article and a tag from an xml <item> to an ArticleTag", () => {
 			const pubDate = new Date("Mon, 02 Jan 2023 01:08:58 +0000");
 
-			const post: Post = {
+			const articleAttributes: ArticleAttributes = {
 				title: "Rethinking Social Media in 2023: A New Home for my Photos // House of Abundance: Stoop Edition",
 				body: "<article>this is a post</article>",
 				createdAt: pubDate,
@@ -253,20 +253,20 @@ describe("SquarespaceImporter", () => {
 				og_type: "article"
 			}
 
-			const tag: Tag = {
+			const tagAttributes: TagAttributes = {
 				name: "House of Abundance",
 				slug: "house-of-abundance"
 			}
 
-			const expectedPostTag: PostTag = {
-				postSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+			const expectedArticleTag: ArticleTag = {
+				articleSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
 				tagSlug: "house-of-abundance"
 			}
 
 
 			const squarespaceImporter = new SquarespaceImporter()
 
-			expect(squarespaceImporter._connectPostTag(post)(tag)).to.deep.eq(expectedPostTag)
+			expect(squarespaceImporter._connectArticleTag(articleAttributes)(tagAttributes)).to.deep.eq(expectedArticleTag)
 		})
 	})
 
@@ -283,7 +283,7 @@ describe("SquarespaceImporter", () => {
 			const squarespaceImporter = new SquarespaceImporter()
 
 			const expectedDatumContainer: DatumContainer = {
-				post: {
+				articleAttributes: {
 					title: "Rethinking Social Media in 2023: A New Home for my Photos // House of Abundance: Stoop Edition",
 					body: "<article>this is a post</article>",
 					createdAt: pubDate,
@@ -295,7 +295,7 @@ describe("SquarespaceImporter", () => {
 					og_type: "article",
 				},
 
-				tags: [
+				tagAttributesCollection: [
 					{
 						name: "House of Abundance",
 						slug: "house-of-abundance"
@@ -330,7 +330,7 @@ describe("SquarespaceImporter", () => {
 	describe("_collateToDataContainer", () => {
 		it("should collate an array of DatumContainers into a DataContainer", () => {
 			const datumContainers: DatumContainer[] = [{
-				post: {
+				articleAttributes: {
 					title: "Rethinking Social Media in 2023: A New Home for my Photos // House of Abundance: Stoop Edition",
 					body: "<article>this is a post</article>",
 					createdAt: pubDate,
@@ -342,7 +342,7 @@ describe("SquarespaceImporter", () => {
 					og_type: "article",
 				},
 
-				tags: [
+				tagAttributesCollection: [
 					{
 						name: "House of Abundance",
 						slug: "house-of-abundance"
@@ -369,7 +369,7 @@ describe("SquarespaceImporter", () => {
 					},
 				],
 			},{
-				post: {
+				articleAttributes: {
 					title: "Another post",
 					body: "<article>Another post</article>",
 					createdAt: pubDate2,
@@ -381,7 +381,7 @@ describe("SquarespaceImporter", () => {
 					og_type: "article",
 				},
 
-				tags: [
+				tagAttributesCollection: [
 					{
 						name: "Bed-Stuy",
 						slug: "bed-stuy"
@@ -390,7 +390,7 @@ describe("SquarespaceImporter", () => {
 			}]
 
 			const expectedDataContainer: DataContainer = {
-				posts: [{
+				articleAttributesCollection: [{
 					title: "Rethinking Social Media in 2023: A New Home for my Photos // House of Abundance: Stoop Edition",
 					body: "<article>this is a post</article>",
 					createdAt: pubDate,
@@ -412,38 +412,38 @@ describe("SquarespaceImporter", () => {
 					og_type: "article",
 				}],
 
-				postTags: [
+				articleTags: [
 					{
-						postSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+						articleSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
 						tagSlug: "house-of-abundance"
 					},
 					{
-						postSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+						articleSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
 						tagSlug: "bed-stuy"
 					},
 					{
-						postSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+						articleSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
 						tagSlug: "brooklyn"
 					},
 					{
-						postSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+						articleSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
 						tagSlug: "stoop-show"
 					},
 					{
-						postSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+						articleSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
 						tagSlug: "poetry-reading"
 					},
 					{
-						postSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+						articleSlug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
 						tagSlug: "live-music"
 					},
 					{
-						postSlug: "another-post-2023-12-22",
+						articleSlug: "another-post-2023-12-22",
 						tagSlug: "bed-stuy"
 					}
 				],
 
-				tags: [
+				tagAttributesCollection: [
 					{
 						name: "House of Abundance",
 						slug: "house-of-abundance"

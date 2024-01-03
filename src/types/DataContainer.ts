@@ -1,9 +1,9 @@
-import {Post} from "types/Post"
-import {Tag} from "types/Tag"
-import {PostTag} from "types/PostTag"
+import {ArticleAttributes} from "types/ArticleAttributes"
+import {TagAttributes} from "types/TagAttributes"
+import {ArticleTag} from "types/ArticleTag"
 
 export type DataContainer = {
-	posts: Post[]
-	postTags: PostTag[]
-	tags: Tag[]
+	articleAttributesCollection: ArticleAttributes[]
+	articleTags: ArticleTag[]
+	tagAttributesCollection: TagAttributes[]
 }

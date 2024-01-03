@@ -1,7 +1,10 @@
 import {Article} from "types/Article"
-import {Post} from "types/Post"
+import {ArticleAttributes} from "types/ArticleAttributes"
 import Strapi, {StrapiResponse} from "strapi-sdk-js"
 import {partition} from "./lib/util"
+import {TagAttributes} from "types/TagAttributes"
+import {Tag} from "types/Tag"
+import {DataContainer} from "types/DataContainer"
 
 export class StrapiExporter {
 	private strapi: Strapi
@@ -10,11 +13,13 @@ export class StrapiExporter {
 		this.strapi = strapi
 	}
 
-	export = async (posts: Post[]): Promise<StrapiResponse<unknown>[]> => {
+	export = async (dataContainer: DataContainer): Promise<StrapiResponse<unknown>[]> => {
 		const [extantArticles, newArticles] = partition(
-			await Promise.all(posts.map(this._findOrInitArticle)),
+			await Promise.all(dataContainer.articleAttributesCollection.map(this._findOrInitArticle)),
 			this._articleExists
 		)
+
+		const tags = await Promise.all(dataContainer.tagAttributesCollection.map(this._findOrInitTag))
 
 		return [
 			...await Promise.all(extantArticles.map(this._updateArticle)),
@@ -22,9 +27,9 @@ export class StrapiExporter {
 		]
 	}
 
-	_findOrInitArticle = async (post: Post): Promise<Article> => {
+	_findOrInitArticle = async (post: ArticleAttributes): Promise<Article> => {
 		try {
-			const article = (await this.strapi.find<Article[]>('articles', {
+			const article: Article = (await this.strapi.find<Article[]>('articles', {
 				filters: {
 					slug: {
 						$eq: post.slug
@@ -55,4 +60,30 @@ export class StrapiExporter {
 		await this.strapi.update('articles', article.id!, article.attributes)
 
 	_articleExists = (article: Article) => !!article.id
+
+	_findOrInitTag = async (tagAttributes: TagAttributes): Promise<Tag> => {
+		try {
+			const tag: Tag = (await this.strapi.find<Tag[]>('tags', {
+				filters: {
+					slug: {
+						$eq: tagAttributes.slug
+					}
+				}
+			})).data[0]
+
+			tag.attributes = tagAttributes
+
+			return tag
+		} catch (e: any) {
+			if (e.error.name !== "NotFoundError") {
+				throw e
+			}
+
+			return {
+				id: undefined,
+				attributes: tagAttributes,
+				meta: {}
+			} as Tag
+		}
+	}
 }
