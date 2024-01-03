@@ -16,28 +16,32 @@ export class StrapiExporter {
 	export = async (dataContainer: DataContainer): Promise<StrapiResponse<unknown>[]> => {
 		const [extantArticles, newArticles] = partition(
 			await Promise.all(dataContainer.articleAttributesCollection.map(this._findOrInitArticle)),
-			this._articleExists
+			this._exists
 		)
 
-		const tags = await Promise.all(dataContainer.tagAttributesCollection.map(this._findOrInitTag))
+		const [extantTags, newTags] = partition(
+			await Promise.all(dataContainer.tagAttributesCollection.map(this._findOrInitTag)),
+			this._exists
+		)
 
 		return [
 			...await Promise.all(extantArticles.map(this._updateArticle)),
-			...await Promise.all(newArticles.map(this._createArticle))
+			...await Promise.all(newArticles.map(this._createArticle)),
+			...await Promise.all(newTags.map(this._createTag))
 		]
 	}
 
-	_findOrInitArticle = async (post: ArticleAttributes): Promise<Article> => {
+	_findOrInitArticle = async (articleAttributes: ArticleAttributes): Promise<Article> => {
 		try {
 			const article: Article = (await this.strapi.find<Article[]>('articles', {
 				filters: {
 					slug: {
-						$eq: post.slug
+						$eq: articleAttributes.slug
 					}
 				}
 			})).data[0]
 
-			article.attributes = post
+			article.attributes = articleAttributes
 
 			return article
 		} catch (e: any) {
@@ -47,7 +51,7 @@ export class StrapiExporter {
 
 			return {
 				id: undefined,
-				attributes: post,
+				attributes: articleAttributes,
 				meta: {}
 			} as Article
 		}
@@ -59,7 +63,7 @@ export class StrapiExporter {
 	_updateArticle = async (article: Article): Promise<StrapiResponse<unknown>> =>
 		await this.strapi.update('articles', article.id!, article.attributes)
 
-	_articleExists = (article: Article) => !!article.id
+	_exists = (entity: Article | Tag) => !!entity.id
 
 	_findOrInitTag = async (tagAttributes: TagAttributes): Promise<Tag> => {
 		try {
@@ -86,4 +90,7 @@ export class StrapiExporter {
 			} as Tag
 		}
 	}
+
+	_createTag = async (tag: Tag): Promise<StrapiResponse<unknown>> =>
+		await this.strapi.create('tags', tag.attributes)
 }
