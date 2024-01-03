@@ -1,7 +1,7 @@
 import {Article} from "types/Article"
 import {ArticleAttributes} from "types/ArticleAttributes"
 import Strapi, {StrapiResponse} from "strapi-sdk-js"
-import {partition} from "./lib/util"
+import {partition, promiseSequence} from "./lib/util"
 import {TagAttributes} from "types/TagAttributes"
 import {Tag} from "types/Tag"
 import {DataContainer} from "types/DataContainer"
@@ -24,11 +24,11 @@ export class StrapiExporter {
 			this._exists
 		)
 
-		return await Promise.all([
-			...extantArticles.map(this._updateArticle),
-			...newArticles.map(this._createArticle),
+		return await promiseSequence([
 			...newTags.map(this._createTag),
-			...extantTags.map(this._updateTag)
+			...extantTags.map(this._updateTag),
+			...newArticles.map(this._createArticle),
+			...extantArticles.map(this._updateArticle),
 		])
 	}
 

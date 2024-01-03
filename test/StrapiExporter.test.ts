@@ -116,14 +116,14 @@ describe("StrapiExporter", () => {
 				.withArgs(casualGreetingsTag).returns(true)
 
 			const updateArticleSuccessResponse = {
-				data: {},
+				data: {type: "updateArticle"},
 				meta: {}
 			}
 
 			stub(strapiExporter, "_updateArticle").withArgs(hiArticle).resolves(updateArticleSuccessResponse)
 
 			const createArticleSuccessResponse = {
-				data: {},
+				data: {type: "createArticle"},
 				meta: {}
 			}
 
@@ -134,24 +134,25 @@ describe("StrapiExporter", () => {
 				.withArgs(casualGreetingsTagAttributes).resolves(casualGreetingsTag)
 
 			const createTagSuccessResponse = {
-				data: {},
+				data: {type: "createTag"},
 				meta: {}
 			}
 
 			stub(strapiExporter, "_createTag").withArgs(greetingsTag).resolves(createTagSuccessResponse)
 
 			const updateTagSuccessResponse = {
-				data: {},
+				data: {type: "updateTag"},
 				meta: {}
 			}
 
 			stub(strapiExporter, "_updateTag").withArgs(casualGreetingsTag).resolves(updateTagSuccessResponse)
 
-			expect(await strapiExporter.export(dataContainer)).to.have.members([
-				updateArticleSuccessResponse,
-				createArticleSuccessResponse,
+			// eq guarantees order
+			expect(await strapiExporter.export(dataContainer)).to.deep.eq([
 				createTagSuccessResponse,
-				updateTagSuccessResponse
+				updateTagSuccessResponse,
+				createArticleSuccessResponse,
+				updateArticleSuccessResponse,
 			])
 		})
 	})
