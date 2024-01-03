@@ -113,44 +113,46 @@ describe("StrapiExporter", () => {
 				.withArgs(hiArticle).returns(true)
 				.withArgs(heyArticle).returns(false)
 				.withArgs(greetingsTag).returns(false)
+				.withArgs(casualGreetingsTag).returns(true)
 
-			stub(strapiExporter, "_updateArticle").withArgs(hiArticle).resolves({
-					data: {},
-					meta: {}
-				})
-
-			stub(strapiExporter, "_createArticle").withArgs(heyArticle).resolves({
+			const updateArticleSuccessResponse = {
 				data: {},
 				meta: {}
-			})
+			}
+
+			stub(strapiExporter, "_updateArticle").withArgs(hiArticle).resolves(updateArticleSuccessResponse)
+
+			const createArticleSuccessResponse = {
+				data: {},
+				meta: {}
+			}
+
+			stub(strapiExporter, "_createArticle").withArgs(heyArticle).resolves(createArticleSuccessResponse)
 
 			stub(strapiExporter, "_findOrInitTag")
 				.withArgs(greetingsTagAttributes).resolves(greetingsTag)
 				.withArgs(casualGreetingsTagAttributes).resolves(casualGreetingsTag)
 
-			stub(strapiExporter, "_createTag").withArgs(greetingsTag).resolves({
+			const createTagSuccessResponse = {
 				data: {},
 				meta: {}
-			})
+			}
 
-			await strapiExporter.export(dataContainer)
+			stub(strapiExporter, "_createTag").withArgs(greetingsTag).resolves(createTagSuccessResponse)
 
-			expect(strapiExporter._findOrInitArticle).to.have.been.calledWith(hiArticleAttributes)
-			expect(strapiExporter._findOrInitArticle).to.have.been.calledWith(heyArticleAttributes)
+			const updateTagSuccessResponse = {
+				data: {},
+				meta: {}
+			}
 
-			expect(strapiExporter._exists).to.have.been.calledWith(hiArticle)
-			expect(strapiExporter._exists).to.have.been.calledWith(heyArticle)
+			stub(strapiExporter, "_updateTag").withArgs(casualGreetingsTag).resolves(updateTagSuccessResponse)
 
-			expect(strapiExporter._updateArticle).to.have.been.calledWith(hiArticle)
-			expect(strapiExporter._createArticle).to.have.been.calledWith(heyArticle)
-
-			expect(strapiExporter._findOrInitTag).to.have.been.calledWith(greetingsTagAttributes)
-			expect(strapiExporter._findOrInitTag).to.have.been.calledWith(casualGreetingsTagAttributes)
-
-			expect(strapiExporter._exists).to.have.been.calledWith(greetingsTag)
-
-			expect(strapiExporter._createTag).to.have.been.calledWith(greetingsTag)
-			// expect(strapiExporter._updateTag).to.have.been.calledWith(casualGreetingsTag)
+			expect(await strapiExporter.export(dataContainer)).to.have.members([
+				updateArticleSuccessResponse,
+				createArticleSuccessResponse,
+				createTagSuccessResponse,
+				updateTagSuccessResponse
+			])
 		})
 	})
 
@@ -559,6 +561,36 @@ describe("StrapiExporter", () => {
 			const strapiExporter = new StrapiExporter(strapi)
 
 			expect(await strapiExporter._createTag(heyTag)).to.eq(successResponse)
+		})
+	})
+
+	describe("_updateTag", () => {
+		it("should update an existing tag", async () => {
+			const id = 12345
+
+			const hiTagAttributes: TagAttributes = {
+				name: "hi",
+				slug: "hi",
+			}
+
+			const tag: Tag = {
+				id: id,
+				attributes: hiTagAttributes,
+				meta: {}
+			}
+
+			const strapi = new Strapi({url: strapiUrl})
+
+			const successResponse = {
+				data: {},
+				meta: {}
+			}
+
+			stub(strapi, "update").withArgs('tags', id, hiTagAttributes).resolves(successResponse)
+
+			const strapiExporter = new StrapiExporter(strapi)
+
+			expect(await strapiExporter._updateTag(tag)).to.eq(successResponse)
 		})
 	})
 })

@@ -14,21 +14,22 @@ export class StrapiExporter {
 	}
 
 	export = async (dataContainer: DataContainer): Promise<StrapiResponse<unknown>[]> => {
-		const [extantArticles, newArticles] = partition(
+		const [extantArticles, newArticles]: Article[][] = partition(
 			await Promise.all(dataContainer.articleAttributesCollection.map(this._findOrInitArticle)),
 			this._exists
 		)
 
-		const [extantTags, newTags] = partition(
+		const [extantTags, newTags]: Tag[][] = partition(
 			await Promise.all(dataContainer.tagAttributesCollection.map(this._findOrInitTag)),
 			this._exists
 		)
 
-		return [
-			...await Promise.all(extantArticles.map(this._updateArticle)),
-			...await Promise.all(newArticles.map(this._createArticle)),
-			...await Promise.all(newTags.map(this._createTag))
-		]
+		return await Promise.all([
+			...extantArticles.map(this._updateArticle),
+			...newArticles.map(this._createArticle),
+			...newTags.map(this._createTag),
+			...extantTags.map(this._updateTag)
+		])
 	}
 
 	_findOrInitArticle = async (articleAttributes: ArticleAttributes): Promise<Article> => {
@@ -57,11 +58,11 @@ export class StrapiExporter {
 		}
 	}
 
-	_createArticle = async (article: Article): Promise<StrapiResponse<unknown>> =>
-		await this.strapi.create('articles', article.attributes)
+	_createArticle = (article: Article): Promise<StrapiResponse<unknown>> =>
+		this.strapi.create('articles', article.attributes)
 
-	_updateArticle = async (article: Article): Promise<StrapiResponse<unknown>> =>
-		await this.strapi.update('articles', article.id!, article.attributes)
+	_updateArticle = (article: Article): Promise<StrapiResponse<unknown>> =>
+		this.strapi.update('articles', article.id!, article.attributes)
 
 	_exists = (entity: Article | Tag) => !!entity.id
 
@@ -91,6 +92,9 @@ export class StrapiExporter {
 		}
 	}
 
-	_createTag = async (tag: Tag): Promise<StrapiResponse<unknown>> =>
-		await this.strapi.create('tags', tag.attributes)
+	_createTag = (tag: Tag): Promise<StrapiResponse<unknown>> =>
+		this.strapi.create('tags', tag.attributes)
+
+	_updateTag = (tag: Tag): Promise<StrapiResponse<unknown>> =>
+		this.strapi.update('tags', tag.id!, tag.attributes)
 }
