@@ -70,9 +70,13 @@ describe("StrapiExporter", () => {
 			}
 
 			const casualGreetingsTag: Tag = {
-				id: undefined,
 				attributes: casualGreetingsTagAttributes,
 				meta: {}
+			}
+
+			const createdCasualGreetingsTag: Tag = {
+				id: 2,
+				...casualGreetingsTag
 			}
 
 			const dataContainer: DataContainer = {
@@ -93,16 +97,21 @@ describe("StrapiExporter", () => {
 
 			const strapiExporter = new StrapiExporter(strapi)
 
-			const hiArticle = {
+			const hiArticle: Article = {
 				id: 12345,
 				attributes: hiArticleAttributes,
 				meta: {}
 			}
 
-			const heyArticle = {
+			const heyArticle: Article = {
 				attributes: heyArticleAttributes,
 				meta: {}
+			}
 
+			const createdHeyArticle: Article = {
+				id: 1,
+				attributes: heyArticleAttributes,
+				meta: {}
 			}
 
 			stub(strapiExporter, "_findOrInitArticle")
@@ -112,47 +121,27 @@ describe("StrapiExporter", () => {
 			stub(strapiExporter, "_exists")
 				.withArgs(hiArticle).returns(true)
 				.withArgs(heyArticle).returns(false)
-				.withArgs(greetingsTag).returns(false)
-				.withArgs(casualGreetingsTag).returns(true)
+				.withArgs(greetingsTag).returns(true)
+				.withArgs(casualGreetingsTag).returns(false)
 
-			const updateArticleSuccessResponse = {
-				data: {type: "updateArticle"},
-				meta: {}
-			}
+			stub(strapiExporter, "_updateArticle").withArgs(hiArticle).resolves(hiArticle)
 
-			stub(strapiExporter, "_updateArticle").withArgs(hiArticle).resolves(updateArticleSuccessResponse)
-
-			const createArticleSuccessResponse = {
-				data: {type: "createArticle"},
-				meta: {}
-			}
-
-			stub(strapiExporter, "_createArticle").withArgs(heyArticle).resolves(createArticleSuccessResponse)
+			stub(strapiExporter, "_createArticle").withArgs(heyArticle).resolves(createdHeyArticle)
 
 			stub(strapiExporter, "_findOrInitTag")
 				.withArgs(greetingsTagAttributes).resolves(greetingsTag)
 				.withArgs(casualGreetingsTagAttributes).resolves(casualGreetingsTag)
 
-			const createTagSuccessResponse = {
-				data: {type: "createTag"},
-				meta: {}
-			}
+			stub(strapiExporter, "_createTag").withArgs(casualGreetingsTag).resolves(createdCasualGreetingsTag)
 
-			stub(strapiExporter, "_createTag").withArgs(greetingsTag).resolves(createTagSuccessResponse)
-
-			const updateTagSuccessResponse = {
-				data: {type: "updateTag"},
-				meta: {}
-			}
-
-			stub(strapiExporter, "_updateTag").withArgs(casualGreetingsTag).resolves(updateTagSuccessResponse)
+			stub(strapiExporter, "_updateTag").withArgs(greetingsTag).resolves(greetingsTag)
 
 			// eq guarantees order
 			expect(await strapiExporter.export(dataContainer)).to.deep.eq([
-				createTagSuccessResponse,
-				updateTagSuccessResponse,
-				createArticleSuccessResponse,
-				updateArticleSuccessResponse,
+				createdCasualGreetingsTag,
+				greetingsTag,
+				createdHeyArticle,
+				hiArticle,
 			])
 		})
 	})
@@ -312,7 +301,7 @@ describe("StrapiExporter", () => {
 				publishedAt: new Date()
 			}
 
-			const article: Article = {
+			const newArticle: Article = {
 				id: undefined,
 				attributes: heyArticleAttributes,
 				meta: {}
@@ -320,21 +309,24 @@ describe("StrapiExporter", () => {
 
 			const strapi = new Strapi({ url: strapiUrl })
 
-			const successResponse = {
-				data: {},
-				meta: {}
+			const createdArticle = {
+				id: 1,
+				...newArticle
 			}
 
-			stub(strapi, "create").withArgs('articles', heyArticleAttributes).resolves(successResponse)
+			stub(strapi, "create").withArgs('articles', heyArticleAttributes).resolves({
+				data: createdArticle,
+				meta: {}
+			})
 
 			const strapiExporter = new StrapiExporter(strapi)
 
-			expect(await strapiExporter._createArticle(article)).to.eq(successResponse)
+			expect(await strapiExporter._createArticle(newArticle)).to.eq(createdArticle)
 		})
 	})
 
 	describe("_updateArticle", () => {
-		it("should update an existing article", () => {
+		it("should update an existing article", async () => {
 			const id = 12345
 
 			const hiArticleAttributes: ArticleAttributes = {
@@ -358,15 +350,13 @@ describe("StrapiExporter", () => {
 			const strapi = new Strapi({url: strapiUrl})
 
 			stub(strapi, "update").withArgs('articles', id, hiArticleAttributes).resolves({
-				data: {},
+				data: article,
 				meta: {}
 			})
 
 			const strapiExporter = new StrapiExporter(strapi)
 
-			strapiExporter._updateArticle(article)
-
-			expect(strapi.update).to.have.been.calledWith('articles', id, hiArticleAttributes)
+			expect(await strapiExporter._updateArticle(article)).to.eq(article)
 		})
 	})
 
@@ -545,23 +535,25 @@ describe("StrapiExporter", () => {
 			}
 
 			const heyTag: Tag = {
-				id: undefined,
 				attributes: heyTagAttributes,
 				meta: {}
 			}
 
-			const strapi = new Strapi({ url: strapiUrl })
-
-			const successResponse = {
-				data: {},
-				meta: {}
+			const createdHeyTag = {
+				id: 1,
+				...heyTag
 			}
 
-			stub(strapi, "create").withArgs('tags', heyTagAttributes).resolves(successResponse)
+			const strapi = new Strapi({ url: strapiUrl })
+
+			stub(strapi, "create").withArgs('tags', heyTagAttributes).resolves({
+				data: createdHeyTag,
+				meta: {}
+			})
 
 			const strapiExporter = new StrapiExporter(strapi)
 
-			expect(await strapiExporter._createTag(heyTag)).to.eq(successResponse)
+			expect(await strapiExporter._createTag(heyTag)).to.eq(createdHeyTag)
 		})
 	})
 
@@ -582,16 +574,14 @@ describe("StrapiExporter", () => {
 
 			const strapi = new Strapi({url: strapiUrl})
 
-			const successResponse = {
-				data: {},
+			stub(strapi, "update").withArgs('tags', id, hiTagAttributes).resolves({
+				data: tag,
 				meta: {}
-			}
-
-			stub(strapi, "update").withArgs('tags', id, hiTagAttributes).resolves(successResponse)
+			})
 
 			const strapiExporter = new StrapiExporter(strapi)
 
-			expect(await strapiExporter._updateTag(tag)).to.eq(successResponse)
+			expect(await strapiExporter._updateTag(tag)).to.eq(tag)
 		})
 	})
 })

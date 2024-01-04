@@ -81,10 +81,7 @@ describe("main", () => {
 		const strapiExporter = new StrapiExporter(strapi)
 		const buildStrapiExporter = (strapi: Strapi) => strapiExporter
 
-		stub(strapiExporter, "export").withArgs(dataContainer).resolves([{
-			data: {},
-			meta: {}
-		}])
+		stub(strapiExporter, "export").withArgs(dataContainer).resolves([])
 
 		await main(argv, fsProxy, squarespaceImporter, buildStrapi, buildStrapiExporter)
 

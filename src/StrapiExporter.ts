@@ -13,7 +13,7 @@ export class StrapiExporter {
 		this.strapi = strapi
 	}
 
-	export = async (dataContainer: DataContainer): Promise<StrapiResponse<unknown>[]> => {
+	export = async (dataContainer: DataContainer): Promise<(Article | Tag)[]> => {
 		const [extantArticles, newArticles]: Article[][] = partition(
 			await Promise.all(dataContainer.articleAttributesCollection.map(this._findOrInitArticle)),
 			this._exists
@@ -24,7 +24,7 @@ export class StrapiExporter {
 			this._exists
 		)
 
-		return await promiseSequence([
+		return await promiseSequence<Article | Tag>([
 			...newTags.map(this._createTag),
 			...extantTags.map(this._updateTag),
 			...newArticles.map(this._createArticle),
@@ -58,11 +58,11 @@ export class StrapiExporter {
 		}
 	}
 
-	_createArticle = (article: Article): Promise<StrapiResponse<unknown>> =>
-		this.strapi.create('articles', article.attributes)
+	_createArticle = async (article: Article): Promise<Article> =>
+		(await this.strapi.create<Article>('articles', article.attributes)).data
 
-	_updateArticle = (article: Article): Promise<StrapiResponse<unknown>> =>
-		this.strapi.update('articles', article.id!, article.attributes)
+	_updateArticle = async (article: Article): Promise<Article> =>
+		(await this.strapi.update<Article>('articles', article.id!, article.attributes)).data
 
 	_exists = (entity: Article | Tag) => !!entity.id
 
@@ -92,9 +92,9 @@ export class StrapiExporter {
 		}
 	}
 
-	_createTag = (tag: Tag): Promise<StrapiResponse<unknown>> =>
-		this.strapi.create('tags', tag.attributes)
+	_createTag = async (tag: Tag): Promise<Tag> =>
+		(await this.strapi.create<Tag>('tags', tag.attributes)).data
 
-	_updateTag = (tag: Tag): Promise<StrapiResponse<unknown>> =>
-		this.strapi.update('tags', tag.id!, tag.attributes)
+	_updateTag = async (tag: Tag): Promise<Tag> =>
+		(await this.strapi.update<Tag>('tags', tag.id!, tag.attributes)).data
 }
