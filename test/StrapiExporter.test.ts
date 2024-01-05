@@ -3,7 +3,7 @@ import Strapi, {
 	StrapiRequestParams,
 	StrapiResponse
 } from "strapi-sdk-js"
-import {stub} from "sinon"
+import {match, stub} from "sinon"
 import chai, {expect} from "chai"
 import sinonChai from "sinon-chai"
 import chaiAsPromised from "chai-as-promised"
@@ -13,6 +13,7 @@ import {Article} from "../src/types/Article"
 import {TagAttributes} from "../src/types/TagAttributes"
 import {Tag} from "../src/types/Tag"
 import {DataContainer} from "../src/types/DataContainer"
+import {ArticleTag} from "../src/types/ArticleTag"
 
 chai.use(sinonChai)
 chai.use(chaiAsPromised)
@@ -22,13 +23,16 @@ describe("StrapiExporter", () => {
 
 	describe("export", () => {
 		it("should update extant articles and create new ones", async () => {
-			const hiSlug = "hi"
-			const heySlug = "hey"
+			const extantSlug = "hi"
+			const newSlug = "hey"
 
-			const hiArticleAttributes: ArticleAttributes = {
+			const extantArticleId = 12345
+			const newArticleId = 12346
+
+			const extantArticleAttributes: ArticleAttributes = {
 				title: "hi",
 				body: "<article>hi</article>",
-				slug: hiSlug,
+				slug: extantSlug,
 				author: "me",
 				collection: "poasts",
 				og_type: "poast",
@@ -37,10 +41,10 @@ describe("StrapiExporter", () => {
 				publishedAt: new Date()
 			}
 
-			const heyArticleAttributes: ArticleAttributes = {
+			const newArticleAttributes: ArticleAttributes = {
 				title: "hey",
 				body: "<article>hey</article>",
-				slug: heySlug,
+				slug: newSlug,
 				author: "me",
 				collection: "poasts",
 				og_type: "poast",
@@ -49,99 +53,136 @@ describe("StrapiExporter", () => {
 				publishedAt: new Date()
 			}
 
-			const greetingsTagSlug = "greetings"
+			const extantTagSlug = "greetings"
 
-			const greetingsTagAttributes: TagAttributes = {
+			const extantTagAttributes: TagAttributes = {
 				name: "Greetings",
-				slug: greetingsTagSlug
+				slug: extantTagSlug
 			}
 
-			const greetingsTag: Tag = {
+			const extantTag: Tag = {
 				id: 1,
-				attributes: greetingsTagAttributes,
+				attributes: extantTagAttributes,
 				meta: {}
 			}
 
-			const casualGreetingsTagSlug = "casual-greetings"
+			const extantTagWithArticleIds: Tag = {
+				...extantTag,
+				attributes: {
+					articles: [extantArticleId, newArticleId],
+					...extantTagAttributes
+				},
+			}
 
-			const casualGreetingsTagAttributes: TagAttributes = {
+			const newTagSlug = "casual-greetings"
+
+			const newTagAttributes: TagAttributes = {
 				name: "Casual greetings",
-				slug: casualGreetingsTagSlug
+				slug: newTagSlug
 			}
 
-			const casualGreetingsTag: Tag = {
-				attributes: casualGreetingsTagAttributes,
+			const newTag: Tag = {
+				attributes: newTagAttributes,
 				meta: {}
 			}
 
-			const createdCasualGreetingsTag: Tag = {
-				id: 2,
-				...casualGreetingsTag
+			const newTagWithArticleIds: Tag = {
+				...newTag,
+				attributes: {
+					articles: [newArticleId],
+					...newTagAttributes
+				},
 			}
+
+			const createdNewTagWithArticleIds: Tag = {
+				id: 2,
+				...newTagWithArticleIds
+			}
+
+			const extantArticleExtantTag: ArticleTag = {
+				articleSlug: extantSlug,
+				tagSlug: extantTagSlug
+			}
+
+			const newArticleExtantTag: ArticleTag = {
+				articleSlug: newSlug,
+				tagSlug: extantTagSlug
+			}
+
+			const newArticleNewTag: ArticleTag = {
+				articleSlug: newSlug,
+				tagSlug: newTagSlug
+			}
+
+			const articleTags = [
+				extantArticleExtantTag,
+				newArticleExtantTag,
+				newArticleNewTag
+			]
 
 			const dataContainer: DataContainer = {
 				articleAttributesCollection: [
-					hiArticleAttributes,
-					heyArticleAttributes
+					extantArticleAttributes,
+					newArticleAttributes
 				],
 				tagAttributesCollection: [
-					greetingsTagAttributes,
-					casualGreetingsTagAttributes,
+					extantTagAttributes,
+					newTagAttributes,
 				],
-				articleTags: [
+				articleTags
+			}
 
-				]
+			const extantArticle: Article = {
+				id: extantArticleId,
+				attributes: extantArticleAttributes,
+				meta: {}
+			}
+
+			const newArticle: Article = {
+				attributes: newArticleAttributes,
+				meta: {}
+			}
+
+			const createdNewArticle: Article = {
+				id: newArticleId,
+				attributes: newArticleAttributes,
+				meta: {}
 			}
 
 			const strapi = new Strapi({ url: strapiUrl })
 
 			const strapiExporter = new StrapiExporter(strapi)
 
-			const hiArticle: Article = {
-				id: 12345,
-				attributes: hiArticleAttributes,
-				meta: {}
-			}
-
-			const heyArticle: Article = {
-				attributes: heyArticleAttributes,
-				meta: {}
-			}
-
-			const createdHeyArticle: Article = {
-				id: 1,
-				attributes: heyArticleAttributes,
-				meta: {}
-			}
-
 			stub(strapiExporter, "_findOrInitArticle")
-				.withArgs(hiArticleAttributes).resolves(hiArticle)
-				.withArgs(heyArticleAttributes).resolves(heyArticle)
+				.withArgs(extantArticleAttributes).resolves(extantArticle)
+				.withArgs(newArticleAttributes).resolves(newArticle)
 
 			stub(strapiExporter, "_exists")
-				.withArgs(hiArticle).returns(true)
-				.withArgs(heyArticle).returns(false)
-				.withArgs(greetingsTag).returns(true)
-				.withArgs(casualGreetingsTag).returns(false)
+				.withArgs(extantArticle).returns(true)
+				.withArgs(newArticle).returns(false)
+				.withArgs(extantTagWithArticleIds).returns(true)
+				.withArgs(newTagWithArticleIds).returns(false)
 
-			stub(strapiExporter, "_updateArticle").withArgs(hiArticle).resolves(hiArticle)
+			stub(strapiExporter, "_updateArticle").withArgs(extantArticle).resolves(extantArticle)
 
-			stub(strapiExporter, "_createArticle").withArgs(heyArticle).resolves(createdHeyArticle)
+			stub(strapiExporter, "_createArticle").withArgs(newArticle).resolves(createdNewArticle)
+
+			stub(strapiExporter, "_connectArticlesToTags").withArgs(articleTags, match.array.deepEquals([createdNewArticle, extantArticle]), [extantTag, newTag]).returns([extantTagWithArticleIds, newTagWithArticleIds])
 
 			stub(strapiExporter, "_findOrInitTag")
-				.withArgs(greetingsTagAttributes).resolves(greetingsTag)
-				.withArgs(casualGreetingsTagAttributes).resolves(casualGreetingsTag)
+				.withArgs(extantTagAttributes).resolves(extantTag)
+				.withArgs(newTagAttributes).resolves(newTag)
 
-			stub(strapiExporter, "_createTag").withArgs(casualGreetingsTag).resolves(createdCasualGreetingsTag)
+			stub(strapiExporter, "_createTag").withArgs(newTagWithArticleIds).resolves(createdNewTagWithArticleIds)
 
-			stub(strapiExporter, "_updateTag").withArgs(greetingsTag).resolves(greetingsTag)
+			stub(strapiExporter, "_updateTag").withArgs(extantTagWithArticleIds).resolves(extantTag)
 
 			// eq guarantees order
 			expect(await strapiExporter.export(dataContainer)).to.deep.eq([
-				createdCasualGreetingsTag,
-				greetingsTag,
-				createdHeyArticle,
-				hiArticle,
+				createdNewArticle,
+				extantArticle,
+				createdNewTagWithArticleIds,
+				extantTag,
 			])
 		})
 	})
@@ -524,6 +565,69 @@ describe("StrapiExporter", () => {
 			const strapiExporter = new StrapiExporter(strapi)
 
 			expect(strapiExporter._findOrInitTag(heyTagAttributes)).to.be.rejectedWith(error)
+		})
+	})
+
+	describe("_connectArticlesToTags", () => {
+		it("should connect created articles to tags by putting articles' IDs into tags' articles field", () => {
+			const tagSlug = "tag"
+			const articleSlug = "article"
+			const articleId = 1
+
+			const articleTags: ArticleTag[] = [
+				{
+					tagSlug,
+					articleSlug
+				}
+			]
+
+			const now = new Date()
+
+			const articles: Article[] = [
+				{
+					id: articleId,
+					attributes: {
+						title: "title",
+						slug: articleSlug,
+						body: "body",
+						author: "elle mundy",
+						collection: "Photography",
+						og_type: "post",
+						createdAt: now,
+						updatedAt: now,
+						publishedAt: now
+					},
+					meta: {}
+				}
+			]
+
+			const tagAttributes = {
+				name: "Tag",
+				slug: tagSlug
+			}
+
+			const tag = {
+				attributes: tagAttributes,
+				meta: {}
+			}
+
+			const tags: Tag[] = [tag]
+
+			const tagsWithArticleIds: Tag[] = [
+				{
+					...tag,
+					attributes: {
+						...tagAttributes,
+						articles: [articleId]
+					}
+				}
+			]
+
+			const strapi = new Strapi({ url: strapiUrl })
+
+			const strapiExporter = new StrapiExporter(strapi)
+
+			expect(strapiExporter._connectArticlesToTags(articleTags, articles, tags)).to.deep.eq(tagsWithArticleIds)
 		})
 	})
 

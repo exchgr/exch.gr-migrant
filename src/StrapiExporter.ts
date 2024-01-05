@@ -1,10 +1,11 @@
 import {Article} from "types/Article"
 import {ArticleAttributes} from "types/ArticleAttributes"
-import Strapi, {StrapiResponse} from "strapi-sdk-js"
+import Strapi from "strapi-sdk-js"
 import {partition, promiseSequence} from "./lib/util"
 import {TagAttributes} from "types/TagAttributes"
 import {Tag} from "types/Tag"
 import {DataContainer} from "types/DataContainer"
+import {ArticleTag} from "types/ArticleTag"
 
 export class StrapiExporter {
 	private strapi: Strapi
@@ -19,17 +20,30 @@ export class StrapiExporter {
 			this._exists
 		)
 
-		const [extantTags, newTags]: Tag[][] = partition(
-			await Promise.all(dataContainer.tagAttributesCollection.map(this._findOrInitTag)),
-			this._exists
-		)
-
-		return await promiseSequence<Article | Tag>([
-			...newTags.map(this._createTag),
-			...extantTags.map(this._updateTag),
+		const ensuredArticles = await promiseSequence([
 			...newArticles.map(this._createArticle),
 			...extantArticles.map(this._updateArticle),
 		])
+
+
+		const [extantTags, newTags]: Tag[][] = partition(
+			this._connectArticlesToTags(
+				dataContainer.articleTags,
+				ensuredArticles,
+				await Promise.all(
+					dataContainer.tagAttributesCollection.map(this._findOrInitTag)
+				)
+			),
+			this._exists
+		)
+
+		return [
+			...ensuredArticles,
+			...await promiseSequence<Article | Tag>([
+				...newTags.map(this._createTag),
+				...extantTags.map(this._updateTag),
+			])
+		]
 	}
 
 	_findOrInitArticle = async (articleAttributes: ArticleAttributes): Promise<Article> => {
@@ -65,6 +79,28 @@ export class StrapiExporter {
 		(await this.strapi.update<Article>('articles', article.id!, article.attributes)).data
 
 	_exists = (entity: Article | Tag) => !!entity.id
+
+	// it's complex because we're complecting. deal with it.
+	_connectArticlesToTags = (articleTags: ArticleTag[], articles: Article[], tags: Tag[]): Tag[] =>
+		tags.map((tag): Tag => {
+			const articleSlugsForThisTag = articleTags.filter((articleTag) =>
+				articleTag.tagSlug == tag.attributes.slug
+			).map((articleTag) =>
+				articleTag.articleSlug
+			)
+
+			return {
+				...tag,
+				attributes: {
+					...tag.attributes,
+					articles: articles.filter((article) =>
+						articleSlugsForThisTag.includes(article.attributes.slug)
+					).map((article): number =>
+						article.id!
+					)
+				}
+			}
+		})
 
 	_findOrInitTag = async (tagAttributes: TagAttributes): Promise<Tag> => {
 		try {
