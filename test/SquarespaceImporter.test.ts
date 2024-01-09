@@ -92,7 +92,12 @@ describe("SquarespaceImporter", () => {
 						name: "Live music",
 						slug: "live-music"
 					},
-				]
+				],
+
+				collectionAttributesCollection: [{
+					name: "Photography",
+					slug: "photography"
+				}]
 			}
 
 			const squarespaceImporter = new SquarespaceImporter()
@@ -320,7 +325,12 @@ describe("SquarespaceImporter", () => {
 						name: "Live music",
 						slug: "live-music"
 					},
-				]
+				],
+
+				collectionAttributes: {
+					name: "Photography",
+					slug: "photography"
+				}
 			}
 
 			expect(squarespaceImporter._convertToDatumContainer(item)).to.deep.eq(expectedDatumContainer)
@@ -368,6 +378,10 @@ describe("SquarespaceImporter", () => {
 						slug: "live-music"
 					},
 				],
+				collectionAttributes: {
+					name: "Photography",
+					slug: "photography"
+				}
 			},{
 				articleAttributes: {
 					title: "Another post",
@@ -387,6 +401,11 @@ describe("SquarespaceImporter", () => {
 						slug: "bed-stuy"
 					},
 				],
+
+				collectionAttributes: {
+					name: "Photography",
+					slug: "photography"
+				}
 			}]
 
 			const expectedDataContainer: DataContainer = {
@@ -468,7 +487,12 @@ describe("SquarespaceImporter", () => {
 						name: "Live music",
 						slug: "live-music"
 					},
-				]
+				],
+
+				collectionAttributesCollection: [{
+					name: "Photography",
+					slug: "photography"
+				}]
 			}
 
 			const squarespaceImporter = new SquarespaceImporter()

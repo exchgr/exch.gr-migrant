@@ -14,6 +14,8 @@ import {TagAttributes} from "../src/types/TagAttributes"
 import {Tag} from "../src/types/Tag"
 import {DataContainer} from "../src/types/DataContainer"
 import {ArticleTag} from "../src/types/ArticleTag"
+import {CollectionAttributes} from "../src/types/CollectionAttributes"
+import {Collection} from "../src/types/Collection"
 
 chai.use(sinonChai)
 chai.use(chaiAsPromised)
@@ -120,6 +122,34 @@ describe("StrapiExporter", () => {
 				newArticleNewTag
 			]
 
+			const newCollectionAttributes: CollectionAttributes = {
+				name: "Photography",
+				slug: "photography"
+			}
+
+			const newCollection: Collection = {
+				attributes: newCollectionAttributes,
+				meta: {}
+			}
+
+			const createdNewCollection: Collection = {
+				id: 2,
+				...newCollection
+			}
+
+			const extantCollectionAttributes: CollectionAttributes = {
+				name: "Code",
+				slug: "code"
+			}
+
+			const extantCollection: Collection = {
+				id: 1,
+				attributes: extantCollectionAttributes,
+				meta: {}
+			}
+
+			const collectionAttributesCollection = [newCollectionAttributes, extantCollectionAttributes]
+
 			const dataContainer: DataContainer = {
 				articleAttributesCollection: [
 					extantArticleAttributes,
@@ -129,7 +159,8 @@ describe("StrapiExporter", () => {
 					extantTagAttributes,
 					newTagAttributes,
 				],
-				articleTags
+				articleTags,
+				collectionAttributesCollection
 			}
 
 			const extantArticle: Article = {
@@ -162,6 +193,8 @@ describe("StrapiExporter", () => {
 				.withArgs(newArticle).returns(false)
 				.withArgs(extantTagWithArticleIds).returns(true)
 				.withArgs(newTagWithArticleIds).returns(false)
+				.withArgs(extantCollection).returns(true)
+				.withArgs(newCollection).returns(false)
 
 			stub(strapiExporter, "_updateArticle").withArgs(extantArticle).resolves(extantArticle)
 
@@ -177,12 +210,21 @@ describe("StrapiExporter", () => {
 
 			stub(strapiExporter, "_updateTag").withArgs(extantTagWithArticleIds).resolves(extantTag)
 
-			// eq guarantees order
+			stub(strapiExporter, "_findOrInitCollection")
+				.withArgs(newCollectionAttributes).resolves(newCollection)
+				.withArgs(extantCollectionAttributes).resolves(extantCollection)
+
+			stub(strapiExporter, "_createCollection").withArgs(newCollection).resolves(createdNewCollection)
+
+			stub(strapiExporter, "_updateCollection").withArgs(extantCollection).resolves(extantCollection)
+
 			expect(await strapiExporter.export(dataContainer)).to.deep.eq([
 				createdNewArticle,
 				extantArticle,
 				createdNewTagWithArticleIds,
 				extantTag,
+				createdNewCollection,
+				extantCollection
 			])
 		})
 	})
@@ -686,6 +728,181 @@ describe("StrapiExporter", () => {
 			const strapiExporter = new StrapiExporter(strapi)
 
 			expect(await strapiExporter._updateTag(tag)).to.eq(tag)
+		})
+	})
+
+	describe("_findOrInitCollection", () => {
+		it("should return an existing collection, updated with incoming CollectionAttributes data", async () => {
+			const id = 12345
+
+			const extantCollectionSlug = "code"
+
+			const extantCollectionAttributes: CollectionAttributes = {
+				name: "Code",
+				slug: extantCollectionSlug
+			}
+
+			const extantCollectionQueryParams: StrapiRequestParams = {
+				filters: {
+					slug: {
+						$eq: extantCollectionSlug
+					}
+				}
+			}
+
+			const extantCollection: Collection = {
+				id: id,
+				attributes: extantCollectionAttributes,
+				meta: {}
+			}
+
+			const strapi = new Strapi({ url: strapiUrl })
+
+			stub(strapi, "find").withArgs('collections', extantCollectionQueryParams).resolves({
+				data: [{
+					id: id,
+					attributes: {
+						slug: extantCollectionSlug
+					},
+					meta: {}
+				}],
+				meta: {}
+			} as StrapiResponse<Collection[]>)
+
+			const strapiExporter = new StrapiExporter(strapi)
+
+			expect(await strapiExporter._findOrInitCollection(extantCollectionAttributes)).to.deep.eq(extantCollection)
+		})
+
+		it("should return a new collection if one doesn't exist", async () => {
+			const newCollectionSlug = "hey"
+
+			const newCollectionAttributes: CollectionAttributes = {
+				name: "hey",
+				slug: newCollectionSlug
+			}
+
+			const newCollectionQueryParams: StrapiRequestParams = {
+				filters: {
+					slug: {
+						$eq: newCollectionSlug
+					}
+				}
+			}
+
+			const newCollection: Collection = {
+				attributes: newCollectionAttributes,
+				meta: {}
+			}
+
+			const strapi = new Strapi({ url: strapiUrl })
+
+			stub(strapi, "find").withArgs('collections', newCollectionQueryParams).rejects({
+				data: null,
+				error: {
+					status: 404,
+					name: "NotFoundError",
+					message: "Not Found",
+					details: {},
+				},
+			} as StrapiError)
+
+			const strapiExporter = new StrapiExporter(strapi)
+
+			expect(await strapiExporter._findOrInitCollection(newCollectionAttributes)).to.deep.eq(newCollection)
+		})
+
+		it("should rethrow all other errors", async () => {
+			const collectionSlug = "hey"
+
+			const collectionAttributes: CollectionAttributes = {
+				name: "hey",
+				slug: collectionSlug,
+			}
+
+			const heyQueryParams: StrapiRequestParams = {
+				filters: {
+					slug: {
+						$eq: collectionSlug
+					}
+				}
+			}
+
+			const error = {
+				status: 502,
+				name: "BadGatewayError",
+				message: "Bad Gateway",
+				details: {},
+			}
+
+			const strapi = new Strapi({ url: strapiUrl })
+
+			stub(strapi, "find").withArgs('collections', heyQueryParams).rejects({
+				data: null,
+				error: error,
+			} as StrapiError)
+
+			const strapiExporter = new StrapiExporter(strapi)
+
+			expect(strapiExporter._findOrInitTag(collectionAttributes)).to.be.rejectedWith(error)
+		})
+	})
+
+	describe("_createCollection", () => {
+		it("should create a new collection", async () => {
+			const newCollectionAttributes: CollectionAttributes = {
+				name: "Photography",
+				slug: "photography",
+			}
+
+			const newCollection: Collection = {
+				attributes: newCollectionAttributes,
+				meta: {}
+			}
+
+			const createdCollection = {
+				id: 1,
+				...newCollection
+			}
+
+			const strapi = new Strapi({ url: strapiUrl })
+
+			stub(strapi, "create").withArgs('collections', newCollectionAttributes).resolves({
+				data: createdCollection,
+				meta: {}
+			})
+
+			const strapiExporter = new StrapiExporter(strapi)
+
+			expect(await strapiExporter._createCollection(newCollection)).to.eq(createdCollection)
+		})
+	})
+
+	describe("_updateCollection", () => {
+		it("should update an existing collection", async () => {
+			const id = 12345
+
+			const extantCollectionAttributes: CollectionAttributes = {
+				name: "Code",
+				slug: "code",
+			}
+
+			const collection: Collection = {
+				id: id,
+				attributes: extantCollectionAttributes,
+				meta: {}
+			}
+
+			const strapi = new Strapi({url: strapiUrl})
+
+			stub(strapi, "update").withArgs('collections', id, extantCollectionAttributes).resolves({
+				data: collection,
+				meta: {}
+			})
+
+			const strapiExporter = new StrapiExporter(strapi)
+
+			expect(await strapiExporter._updateCollection(collection)).to.eq(collection)
 		})
 	})
 })

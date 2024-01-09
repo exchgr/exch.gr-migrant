@@ -4,6 +4,7 @@ import {TagAttributes} from "types/TagAttributes"
 import {DataContainer} from "types/DataContainer"
 import {ArticleTag} from "types/ArticleTag"
 import {DatumContainer} from "types/DatumContainer"
+import {CollectionAttributes} from "types/CollectionAttributes"
 
 export default class SquarespaceImporter {
 	import = (squarespaceData: string): DataContainer =>
@@ -56,23 +57,24 @@ export default class SquarespaceImporter {
 		)[0].value
 	})
 
-	_convertToDatumContainer = (item: Element): DatumContainer => {
-		const articleAttributes = this._convertToArticleAttributes(item)
-		const tagAttributesCollection = this
-			._extractCategories(item)
-			.map(this._convertToTagAttributes)
-			.filter((tagAttributes) =>
-				tagAttributes.name != "Photography"
-			)
-
-		return ({
-			articleAttributes,
-			tagAttributesCollection,
+	_convertToDatumContainer = (item: Element): DatumContainer =>
+		({
+			articleAttributes: this._convertToArticleAttributes(item),
+			tagAttributesCollection: this
+				._extractCategories(item)
+				.map(this._convertToTagAttributes)
+				.filter((tagAttributes) =>
+					tagAttributes.name != "Photography"
+				),
+			collectionAttributes: {
+				name: "Photography",
+				slug: "photography"
+			}
 		})
-	}
 
 	_convertToDataContainer = (datumContainers: DatumContainer[]): DataContainer => {
 		const seenTagSlugs: string[] = []
+		const seenCollectionSlugs: string[] = []
 
 		return {
 			articleAttributesCollection: datumContainers.map((datumContainer) =>
@@ -87,6 +89,12 @@ export default class SquarespaceImporter {
 
 			articleTags: datumContainers.flatMap((datumContainer) =>
 				datumContainer.tagAttributesCollection.map(this._connectArticleTag(datumContainer.articleAttributes))
+			),
+
+			collectionAttributesCollection: datumContainers.map((datumContainer) =>
+				datumContainer.collectionAttributes
+			).filter((collectionAttributes: CollectionAttributes) =>
+				seenCollectionSlugs.includes(collectionAttributes.slug) ? false : seenCollectionSlugs.push(collectionAttributes.slug)
 			)
 		}
 	}

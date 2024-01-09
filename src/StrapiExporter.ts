@@ -6,6 +6,8 @@ import {TagAttributes} from "types/TagAttributes"
 import {Tag} from "types/Tag"
 import {DataContainer} from "types/DataContainer"
 import {ArticleTag} from "types/ArticleTag"
+import {CollectionAttributes} from "types/CollectionAttributes"
+import {Collection} from "types/Collection"
 
 export class StrapiExporter {
 	private strapi: Strapi
@@ -14,7 +16,7 @@ export class StrapiExporter {
 		this.strapi = strapi
 	}
 
-	export = async (dataContainer: DataContainer): Promise<(Article | Tag)[]> => {
+	export = async (dataContainer: DataContainer): Promise<(Article | Tag | Collection)[]> => {
 		const [extantArticles, newArticles]: Article[][] = partition(
 			await Promise.all(dataContainer.articleAttributesCollection.map(this._findOrInitArticle)),
 			this._exists
@@ -37,11 +39,20 @@ export class StrapiExporter {
 			this._exists
 		)
 
+		const [extantCollections, newCollections]: Collection[][] = partition(
+			await Promise.all(dataContainer.collectionAttributesCollection.map(this._findOrInitCollection)),
+			this._exists
+		)
+
 		return [
 			...ensuredArticles,
 			...await promiseSequence<Article | Tag>([
 				...newTags.map(this._createTag),
 				...extantTags.map(this._updateTag),
+			]),
+			...await promiseSequence<Collection>([
+				...newCollections.map(this._createCollection),
+				...extantCollections.map(this._updateCollection)
 			])
 		]
 	}
@@ -78,7 +89,7 @@ export class StrapiExporter {
 	_updateArticle = async (article: Article): Promise<Article> =>
 		(await this.strapi.update<Article>('articles', article.id!, article.attributes)).data
 
-	_exists = (entity: Article | Tag) => !!entity.id
+	_exists = (entity: Article | Tag | Collection) => !!entity.id
 
 	// it's complex because we're complecting. deal with it.
 	_connectArticlesToTags = (articleTags: ArticleTag[], articles: Article[], tags: Tag[]): Tag[] =>
@@ -133,4 +144,35 @@ export class StrapiExporter {
 
 	_updateTag = async (tag: Tag): Promise<Tag> =>
 		(await this.strapi.update<Tag>('tags', tag.id!, tag.attributes)).data
+
+	_findOrInitCollection = async (collectionAttributes: CollectionAttributes): Promise<Collection> => {
+		try {
+			const collection: Collection = (await this.strapi.find<Collection[]>('collections', {
+				filters: {
+					slug: {
+						$eq: collectionAttributes.slug
+					}
+				}
+			})).data[0]
+
+			collection.attributes = collectionAttributes
+
+			return collection
+		} catch (e: any) {
+			if (e.error.name !== "NotFoundError") {
+				throw e
+			}
+
+			return {
+				attributes: collectionAttributes,
+				meta: {}
+			} as Collection
+		}
+	}
+
+	_createCollection = async (collection: Collection): Promise<Collection> =>
+		(await this.strapi.create<Collection>('collections', collection.attributes)).data
+
+	_updateCollection = async (collection: Collection): Promise<Collection> =>
+		(await this.strapi.update<Collection>('collections', collection.id!, collection.attributes)).data
 }

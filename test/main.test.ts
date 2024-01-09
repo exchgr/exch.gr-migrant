@@ -69,7 +69,8 @@ describe("main", () => {
 		const dataContainer: DataContainer = {
 			articleAttributesCollection: [],
 			tagAttributesCollection: [],
-			articleTags: []
+			articleTags: [],
+			collectionAttributesCollection: []
 		}
 
 		const squarespaceImporter = new SquarespaceImporter()
@@ -79,7 +80,7 @@ describe("main", () => {
 		const buildStrapi = (_strapiOptions: StrapiOptions) => strapi
 
 		const strapiExporter = new StrapiExporter(strapi)
-		const buildStrapiExporter = (strapi: Strapi) => strapiExporter
+		const buildStrapiExporter = (_: Strapi) => strapiExporter
 
 		stub(strapiExporter, "export").withArgs(dataContainer).resolves([])
 
