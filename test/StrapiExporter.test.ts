@@ -853,7 +853,7 @@ describe("StrapiExporter", () => {
 
 			const strapiExporter = new StrapiExporter(strapi)
 
-			expect(strapiExporter._findOrInitTag(collectionAttributes)).to.be.rejectedWith(error)
+			expect(strapiExporter._findOrInitCollection(collectionAttributes)).to.be.rejectedWith(error)
 		})
 	})
 
