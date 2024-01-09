@@ -8,6 +8,7 @@ import {DataContainer} from "types/DataContainer"
 import {ArticleTag} from "types/ArticleTag"
 import {CollectionAttributes} from "types/CollectionAttributes"
 import {Collection} from "types/Collection"
+import {CollectionArticles} from "types/CollectionArticles"
 
 export class StrapiExporter {
 	private strapi: Strapi
@@ -39,8 +40,14 @@ export class StrapiExporter {
 			this._exists
 		)
 
+		const collections = await Promise.all(dataContainer.collectionAttributesCollection.map(this._findOrInitCollection))
+
 		const [extantCollections, newCollections]: Collection[][] = partition(
-			await Promise.all(dataContainer.collectionAttributesCollection.map(this._findOrInitCollection)),
+			this._connectArticlesToCollections(
+				dataContainer.collectionArticles,
+				ensuredArticles,
+				collections
+			),
 			this._exists
 		)
 
@@ -106,9 +113,7 @@ export class StrapiExporter {
 					...tag.attributes,
 					articles: articles.filter((article) =>
 						articleSlugsForThisTag.includes(article.attributes.slug)
-					).map((article): number =>
-						article.id!
-					)
+					).map((article): number => article.id!)
 				}
 			}
 		})
@@ -175,4 +180,20 @@ export class StrapiExporter {
 
 	_updateCollection = async (collection: Collection): Promise<Collection> =>
 		(await this.strapi.update<Collection>('collections', collection.id!, collection.attributes)).data
+
+	_connectArticlesToCollections = (
+		collectionArticles: CollectionArticles,
+		articles: Article[],
+		collections: Collection[]
+	): Collection[] =>
+		collections.map((collection: Collection) => ({
+			...collection,
+			attributes: {
+				...collection.attributes,
+				articles: articles.filter((article: Article) =>
+					collectionArticles[collection.attributes.slug].includes(article.attributes.slug )
+				).map((article: Article) => article.id!)
+			}
+		})
+		)
 }

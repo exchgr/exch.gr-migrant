@@ -22,7 +22,6 @@ describe("SquarespaceImporter", () => {
 					updatedAt: pubDate,
 					slug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
 					author: "elle mundy",
-					collection: "Photography",
 					og_type: "article",
 				}, {
 					title: "Another post",
@@ -32,7 +31,6 @@ describe("SquarespaceImporter", () => {
 					updatedAt: pubDate2,
 					slug: "another-post-2023-12-22",
 					author: "elle mundy",
-					collection: "Photography",
 					og_type: "article",
 				}],
 
@@ -97,7 +95,14 @@ describe("SquarespaceImporter", () => {
 				collectionAttributesCollection: [{
 					name: "Photography",
 					slug: "photography"
-				}]
+				}],
+
+				collectionArticles: {
+					"photography": [
+						"rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+						"another-post-2023-12-22"
+					]
+				}
 			}
 
 			const squarespaceImporter = new SquarespaceImporter()
@@ -190,7 +195,6 @@ describe("SquarespaceImporter", () => {
 				updatedAt: pubDate,
 				slug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
 				author: "elle mundy",
-				collection: "Photography",
 				og_type: "article"
 			}
 
@@ -254,7 +258,6 @@ describe("SquarespaceImporter", () => {
 				updatedAt: pubDate,
 				slug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
 				author: "elle mundy",
-				collection: "Photography",
 				og_type: "article"
 			}
 
@@ -296,7 +299,6 @@ describe("SquarespaceImporter", () => {
 					updatedAt: pubDate,
 					slug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
 					author: "elle mundy",
-					collection: "Photography",
 					og_type: "article",
 				},
 
@@ -348,7 +350,6 @@ describe("SquarespaceImporter", () => {
 					updatedAt: pubDate,
 					slug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
 					author: "elle mundy",
-					collection: "Photography",
 					og_type: "article",
 				},
 
@@ -391,7 +392,6 @@ describe("SquarespaceImporter", () => {
 					updatedAt: pubDate2,
 					slug: "another-post-2023-12-22",
 					author: "elle mundy",
-					collection: "Photography",
 					og_type: "article",
 				},
 
@@ -417,7 +417,6 @@ describe("SquarespaceImporter", () => {
 					updatedAt: pubDate,
 					slug: "rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
 					author: "elle mundy",
-					collection: "Photography",
 					og_type: "article",
 				}, {
 					title: "Another post",
@@ -427,7 +426,6 @@ describe("SquarespaceImporter", () => {
 					updatedAt: pubDate2,
 					slug: "another-post-2023-12-22",
 					author: "elle mundy",
-					collection: "Photography",
 					og_type: "article",
 				}],
 
@@ -492,7 +490,14 @@ describe("SquarespaceImporter", () => {
 				collectionAttributesCollection: [{
 					name: "Photography",
 					slug: "photography"
-				}]
+				}],
+
+				collectionArticles: {
+					"photography": [
+						"rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+						"another-post-2023-12-22"
+					]
+				}
 			}
 
 			const squarespaceImporter = new SquarespaceImporter()

@@ -16,6 +16,7 @@ import {DataContainer} from "../src/types/DataContainer"
 import {ArticleTag} from "../src/types/ArticleTag"
 import {CollectionAttributes} from "../src/types/CollectionAttributes"
 import {Collection} from "../src/types/Collection"
+import {CollectionArticles} from "../src/types/CollectionArticles"
 
 chai.use(sinonChai)
 chai.use(chaiAsPromised)
@@ -25,8 +26,8 @@ describe("StrapiExporter", () => {
 
 	describe("export", () => {
 		it("should update extant articles and create new ones", async () => {
-			const extantSlug = "hi"
-			const newSlug = "hey"
+			const extantArticleSlug = "hi"
+			const newArticleSlug = "hey"
 
 			const extantArticleId = 12345
 			const newArticleId = 12346
@@ -34,9 +35,8 @@ describe("StrapiExporter", () => {
 			const extantArticleAttributes: ArticleAttributes = {
 				title: "hi",
 				body: "<article>hi</article>",
-				slug: extantSlug,
+				slug: extantArticleSlug,
 				author: "me",
-				collection: "poasts",
 				og_type: "poast",
 				createdAt: new Date(),
 				updatedAt: new Date(),
@@ -46,9 +46,8 @@ describe("StrapiExporter", () => {
 			const newArticleAttributes: ArticleAttributes = {
 				title: "hey",
 				body: "<article>hey</article>",
-				slug: newSlug,
+				slug: newArticleSlug,
 				author: "me",
-				collection: "poasts",
 				og_type: "poast",
 				createdAt: new Date(),
 				updatedAt: new Date(),
@@ -102,17 +101,17 @@ describe("StrapiExporter", () => {
 			}
 
 			const extantArticleExtantTag: ArticleTag = {
-				articleSlug: extantSlug,
+				articleSlug: extantArticleSlug,
 				tagSlug: extantTagSlug
 			}
 
 			const newArticleExtantTag: ArticleTag = {
-				articleSlug: newSlug,
+				articleSlug: newArticleSlug,
 				tagSlug: extantTagSlug
 			}
 
 			const newArticleNewTag: ArticleTag = {
-				articleSlug: newSlug,
+				articleSlug: newArticleSlug,
 				tagSlug: newTagSlug
 			}
 
@@ -122,9 +121,11 @@ describe("StrapiExporter", () => {
 				newArticleNewTag
 			]
 
+			const newCollectionSlug = "photography"
+
 			const newCollectionAttributes: CollectionAttributes = {
 				name: "Photography",
-				slug: "photography"
+				slug: newCollectionSlug
 			}
 
 			const newCollection: Collection = {
@@ -132,14 +133,24 @@ describe("StrapiExporter", () => {
 				meta: {}
 			}
 
-			const createdNewCollection: Collection = {
-				id: 2,
-				...newCollection
+			const newCollectionWithArticleIds: Collection = {
+				...newCollection,
+				attributes: {
+					...newCollectionAttributes,
+					articles: [extantArticleId]
+				}
 			}
+
+			const createdNewCollectionWithArticleIds: Collection = {
+				id: 2,
+				...newCollectionWithArticleIds
+			}
+
+			const extantCollectionSlug = "code"
 
 			const extantCollectionAttributes: CollectionAttributes = {
 				name: "Code",
-				slug: "code"
+				slug: extantCollectionSlug
 			}
 
 			const extantCollection: Collection = {
@@ -148,7 +159,18 @@ describe("StrapiExporter", () => {
 				meta: {}
 			}
 
-			const collectionAttributesCollection = [newCollectionAttributes, extantCollectionAttributes]
+			const extantCollectionWithArticleIds: Collection = {
+				...extantCollection,
+				attributes: {
+					...extantCollectionAttributes,
+					articles: [newArticleId]
+				}
+			}
+
+			const collectionArticles: CollectionArticles = {
+				[newCollectionSlug]: [extantArticleSlug],
+				[extantCollectionSlug]: [newArticleSlug]
+			}
 
 			const dataContainer: DataContainer = {
 				articleAttributesCollection: [
@@ -160,7 +182,11 @@ describe("StrapiExporter", () => {
 					newTagAttributes,
 				],
 				articleTags,
-				collectionAttributesCollection
+				collectionAttributesCollection: [
+					extantCollectionAttributes,
+					newCollectionAttributes
+				],
+				collectionArticles
 			}
 
 			const extantArticle: Article = {
@@ -193,14 +219,18 @@ describe("StrapiExporter", () => {
 				.withArgs(newArticle).returns(false)
 				.withArgs(extantTagWithArticleIds).returns(true)
 				.withArgs(newTagWithArticleIds).returns(false)
-				.withArgs(extantCollection).returns(true)
-				.withArgs(newCollection).returns(false)
+				.withArgs(extantCollectionWithArticleIds).returns(true)
+				.withArgs(newCollectionWithArticleIds).returns(false)
 
 			stub(strapiExporter, "_updateArticle").withArgs(extantArticle).resolves(extantArticle)
 
 			stub(strapiExporter, "_createArticle").withArgs(newArticle).resolves(createdNewArticle)
 
-			stub(strapiExporter, "_connectArticlesToTags").withArgs(articleTags, match.array.deepEquals([createdNewArticle, extantArticle]), [extantTag, newTag]).returns([extantTagWithArticleIds, newTagWithArticleIds])
+			stub(strapiExporter, "_connectArticlesToTags").withArgs(
+				articleTags,
+				match.array.deepEquals([createdNewArticle, extantArticle]),
+				[extantTag, newTag]
+			).returns([extantTagWithArticleIds, newTagWithArticleIds])
 
 			stub(strapiExporter, "_findOrInitTag")
 				.withArgs(extantTagAttributes).resolves(extantTag)
@@ -208,23 +238,29 @@ describe("StrapiExporter", () => {
 
 			stub(strapiExporter, "_createTag").withArgs(newTagWithArticleIds).resolves(createdNewTagWithArticleIds)
 
-			stub(strapiExporter, "_updateTag").withArgs(extantTagWithArticleIds).resolves(extantTag)
+			stub(strapiExporter, "_updateTag").withArgs(extantTagWithArticleIds).resolves(extantTagWithArticleIds)
 
 			stub(strapiExporter, "_findOrInitCollection")
 				.withArgs(newCollectionAttributes).resolves(newCollection)
 				.withArgs(extantCollectionAttributes).resolves(extantCollection)
 
-			stub(strapiExporter, "_createCollection").withArgs(newCollection).resolves(createdNewCollection)
+			stub(strapiExporter, "_createCollection").withArgs(newCollectionWithArticleIds).resolves(createdNewCollectionWithArticleIds)
 
-			stub(strapiExporter, "_updateCollection").withArgs(extantCollection).resolves(extantCollection)
+			stub(strapiExporter, "_updateCollection").withArgs(extantCollectionWithArticleIds).resolves(extantCollectionWithArticleIds)
+
+			stub(strapiExporter, "_connectArticlesToCollections").withArgs(
+				collectionArticles,
+				match.array.deepEquals([createdNewArticle, extantArticle]),
+				[extantCollection, newCollection]
+			).returns([extantCollectionWithArticleIds, newCollectionWithArticleIds])
 
 			expect(await strapiExporter.export(dataContainer)).to.deep.eq([
 				createdNewArticle,
 				extantArticle,
 				createdNewTagWithArticleIds,
-				extantTag,
-				createdNewCollection,
-				extantCollection
+				extantTagWithArticleIds,
+				createdNewCollectionWithArticleIds,
+				extantCollectionWithArticleIds
 			])
 		})
 	})
@@ -242,7 +278,6 @@ describe("StrapiExporter", () => {
 				body: "<article>hi</article>",
 				slug: hiSlug,
 				author: "me",
-				collection: "poasts",
 				og_type: "poast",
 				createdAt: date,
 				updatedAt: date,
@@ -289,7 +324,6 @@ describe("StrapiExporter", () => {
 				body: "<article>hey</article>",
 				slug: heySlug,
 				author: "me",
-				collection: "poasts",
 				og_type: "poast",
 				createdAt: date,
 				updatedAt: date,
@@ -335,7 +369,6 @@ describe("StrapiExporter", () => {
 				body: "<article>hey</article>",
 				slug: heySlug,
 				author: "me",
-				collection: "poasts",
 				og_type: "poast",
 				createdAt: date,
 				updatedAt: date,
@@ -377,7 +410,6 @@ describe("StrapiExporter", () => {
 				body: "<article>hey</article>",
 				slug: "hey",
 				author: "me",
-				collection: "poasts",
 				og_type: "poast",
 				createdAt: new Date(),
 				updatedAt: new Date(),
@@ -417,7 +449,6 @@ describe("StrapiExporter", () => {
 				body: "<article>hi</article>",
 				slug: "hi",
 				author: "me",
-				collection: "poasts",
 				og_type: "poast",
 				createdAt: new Date(),
 				updatedAt: new Date(),
@@ -452,7 +483,6 @@ describe("StrapiExporter", () => {
 					body: "<article>hi</article>",
 					slug: "hi",
 					author: "me",
-					collection: "poasts",
 					og_type: "poast",
 					createdAt: new Date(),
 					updatedAt: new Date(),
@@ -475,7 +505,6 @@ describe("StrapiExporter", () => {
 					body: "<article>hey</article>",
 					slug: "hey",
 					author: "me",
-					collection: "poasts",
 					og_type: "poast",
 					createdAt: new Date(),
 					updatedAt: new Date(),
@@ -633,7 +662,6 @@ describe("StrapiExporter", () => {
 						slug: articleSlug,
 						body: "body",
 						author: "elle mundy",
-						collection: "Photography",
 						og_type: "post",
 						createdAt: now,
 						updatedAt: now,
@@ -903,6 +931,68 @@ describe("StrapiExporter", () => {
 			const strapiExporter = new StrapiExporter(strapi)
 
 			expect(await strapiExporter._updateCollection(collection)).to.eq(collection)
+		})
+	})
+
+	describe("_connectArticlesToCollections", () => {
+		it("should connect created articles to collections by putting articles' IDs into collections' articles field", () => {
+			const collectionSlug = "tag"
+			const articleSlug = "article"
+			const articleId = 1
+
+			const collectionArticles: CollectionArticles = {
+				[collectionSlug]: [articleSlug]
+			}
+
+
+			const now = new Date()
+
+			const articles: Article[] = [
+				{
+					id: articleId,
+					attributes: {
+						title: "title",
+						slug: articleSlug,
+						body: "body",
+						author: "elle mundy",
+						og_type: "post",
+						createdAt: now,
+						updatedAt: now,
+						publishedAt: now
+					},
+					meta: {}
+				}
+			]
+
+			const collectionAttributes: CollectionAttributes = {
+				name: "Tag",
+				slug: collectionSlug
+			}
+
+			const collection: Collection = {
+				attributes: collectionAttributes,
+				meta: {}
+			}
+
+			const collections: Collection[] = [collection]
+
+			const collectionsWithArticleIds: Collection[] = [
+				{
+					...collection,
+					attributes: {
+						...collectionAttributes,
+						articles: [articleId]
+					}
+				}
+			]
+
+			const strapi = new Strapi({ url: strapiUrl })
+
+			const strapiExporter = new StrapiExporter(strapi)
+
+			expect(strapiExporter._connectArticlesToCollections(
+				collectionArticles, articles, collections
+			)).to.deep.eq(collectionsWithArticleIds)
 		})
 	})
 })

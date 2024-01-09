@@ -5,6 +5,7 @@ import {DataContainer} from "types/DataContainer"
 import {ArticleTag} from "types/ArticleTag"
 import {DatumContainer} from "types/DatumContainer"
 import {CollectionAttributes} from "types/CollectionAttributes"
+import {CollectionArticles} from "types/CollectionArticles"
 
 export default class SquarespaceImporter {
 	import = (squarespaceData: string): DataContainer =>
@@ -42,7 +43,6 @@ export default class SquarespaceImporter {
 			updatedAt: pubDate,
 			slug: item.querySelector("wp\\:post_name")!.textContent!,
 			author: "elle mundy",
-			collection: "Photography",
 			og_type: "article"
 		};
 	}
@@ -95,7 +95,15 @@ export default class SquarespaceImporter {
 				datumContainer.collectionAttributes
 			).filter((collectionAttributes: CollectionAttributes) =>
 				seenCollectionSlugs.includes(collectionAttributes.slug) ? false : seenCollectionSlugs.push(collectionAttributes.slug)
-			)
+			),
+
+			collectionArticles: datumContainers.reduce((collectionArticles, datumContainer): CollectionArticles => {
+				collectionArticles[datumContainer.collectionAttributes.slug] ||= []
+
+				collectionArticles[datumContainer.collectionAttributes.slug].push(datumContainer.articleAttributes.slug)
+
+				return collectionArticles
+			}, {} as CollectionArticles)
 		}
 	}
 

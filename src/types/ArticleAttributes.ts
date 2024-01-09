@@ -6,6 +6,5 @@ export type ArticleAttributes = {
 	updatedAt: Date
 	slug: string
 	author: string
-	collection: string
 	og_type: string
 }

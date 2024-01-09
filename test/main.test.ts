@@ -70,7 +70,8 @@ describe("main", () => {
 			articleAttributesCollection: [],
 			tagAttributesCollection: [],
 			articleTags: [],
-			collectionAttributesCollection: []
+			collectionAttributesCollection: [],
+			collectionArticles: {}
 		}
 
 		const squarespaceImporter = new SquarespaceImporter()
