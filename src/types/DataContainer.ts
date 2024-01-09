@@ -1,13 +1,13 @@
 import {ArticleAttributes} from "types/ArticleAttributes"
 import {TagAttributes} from "types/TagAttributes"
 import {CollectionAttributes} from "types/CollectionAttributes"
-import {ArticleTag} from "types/ArticleTag"
 import {CollectionArticles} from "types/CollectionArticles"
+import {TagArticles} from "types/TagArticles"
 
 export type DataContainer = {
 	articleAttributesCollection: ArticleAttributes[]
-	articleTags: ArticleTag[]
 	tagAttributesCollection: TagAttributes[]
+	tagArticles: TagArticles
 	collectionAttributesCollection: CollectionAttributes[]
 	collectionArticles: CollectionArticles
 }

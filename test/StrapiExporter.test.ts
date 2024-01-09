@@ -13,10 +13,10 @@ import {Article} from "../src/types/Article"
 import {TagAttributes} from "../src/types/TagAttributes"
 import {Tag} from "../src/types/Tag"
 import {DataContainer} from "../src/types/DataContainer"
-import {ArticleTag} from "../src/types/ArticleTag"
 import {CollectionAttributes} from "../src/types/CollectionAttributes"
 import {Collection} from "../src/types/Collection"
 import {CollectionArticles} from "../src/types/CollectionArticles"
+import {TagArticles} from "../src/types/TagArticles"
 
 chai.use(sinonChai)
 chai.use(chaiAsPromised)
@@ -100,26 +100,10 @@ describe("StrapiExporter", () => {
 				...newTagWithArticleIds
 			}
 
-			const extantArticleExtantTag: ArticleTag = {
-				articleSlug: extantArticleSlug,
-				tagSlug: extantTagSlug
+			const tagArticles: TagArticles = {
+				[extantTagSlug]: [extantArticleSlug, newArticleSlug],
+				[newTagSlug]: [newTagSlug]
 			}
-
-			const newArticleExtantTag: ArticleTag = {
-				articleSlug: newArticleSlug,
-				tagSlug: extantTagSlug
-			}
-
-			const newArticleNewTag: ArticleTag = {
-				articleSlug: newArticleSlug,
-				tagSlug: newTagSlug
-			}
-
-			const articleTags = [
-				extantArticleExtantTag,
-				newArticleExtantTag,
-				newArticleNewTag
-			]
 
 			const newCollectionSlug = "photography"
 
@@ -181,7 +165,7 @@ describe("StrapiExporter", () => {
 					extantTagAttributes,
 					newTagAttributes,
 				],
-				articleTags,
+				tagArticles,
 				collectionAttributesCollection: [
 					extantCollectionAttributes,
 					newCollectionAttributes
@@ -227,7 +211,7 @@ describe("StrapiExporter", () => {
 			stub(strapiExporter, "_createArticle").withArgs(newArticle).resolves(createdNewArticle)
 
 			stub(strapiExporter, "_connectArticlesToTags").withArgs(
-				articleTags,
+				tagArticles,
 				match.array.deepEquals([createdNewArticle, extantArticle]),
 				[extantTag, newTag]
 			).returns([extantTagWithArticleIds, newTagWithArticleIds])
@@ -645,12 +629,9 @@ describe("StrapiExporter", () => {
 			const articleSlug = "article"
 			const articleId = 1
 
-			const articleTags: ArticleTag[] = [
-				{
-					tagSlug,
-					articleSlug
-				}
-			]
+			const tagArticles: TagArticles = {
+				[tagSlug]: [articleSlug]
+			}
 
 			const now = new Date()
 
@@ -697,7 +678,7 @@ describe("StrapiExporter", () => {
 
 			const strapiExporter = new StrapiExporter(strapi)
 
-			expect(strapiExporter._connectArticlesToTags(articleTags, articles, tags)).to.deep.eq(tagsWithArticleIds)
+			expect(strapiExporter._connectArticlesToTags(tagArticles, articles, tags)).to.deep.eq(tagsWithArticleIds)
 		})
 	})
 

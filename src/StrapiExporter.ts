@@ -5,10 +5,10 @@ import {partition, promiseSequence} from "./lib/util"
 import {TagAttributes} from "types/TagAttributes"
 import {Tag} from "types/Tag"
 import {DataContainer} from "types/DataContainer"
-import {ArticleTag} from "types/ArticleTag"
 import {CollectionAttributes} from "types/CollectionAttributes"
 import {Collection} from "types/Collection"
 import {CollectionArticles} from "types/CollectionArticles"
+import {TagArticles} from "types/TagArticles"
 
 export class StrapiExporter {
 	private strapi: Strapi
@@ -31,7 +31,7 @@ export class StrapiExporter {
 
 		const [extantTags, newTags]: Tag[][] = partition(
 			this._connectArticlesToTags(
-				dataContainer.articleTags,
+				dataContainer.tagArticles,
 				ensuredArticles,
 				await Promise.all(
 					dataContainer.tagAttributesCollection.map(this._findOrInitTag)
@@ -99,24 +99,16 @@ export class StrapiExporter {
 	_exists = (entity: Article | Tag | Collection) => !!entity.id
 
 	// it's complex because we're complecting. deal with it.
-	_connectArticlesToTags = (articleTags: ArticleTag[], articles: Article[], tags: Tag[]): Tag[] =>
-		tags.map((tag): Tag => {
-			const articleSlugsForThisTag = articleTags.filter((articleTag) =>
-				articleTag.tagSlug == tag.attributes.slug
-			).map((articleTag) =>
-				articleTag.articleSlug
-			)
-
-			return {
-				...tag,
-				attributes: {
-					...tag.attributes,
-					articles: articles.filter((article) =>
-						articleSlugsForThisTag.includes(article.attributes.slug)
-					).map((article): number => article.id!)
-				}
+	_connectArticlesToTags = (tagArticles: TagArticles, articles: Article[], tags: Tag[]): Tag[] =>
+		tags.map((tag): Tag => ({
+			...tag,
+			attributes: {
+				...tag.attributes,
+				articles: articles.filter((article) =>
+					tagArticles[tag.attributes.slug].includes(article.attributes.slug)
+				).map((article): number => article.id!)
 			}
-		})
+		}))
 
 	_findOrInitTag = async (tagAttributes: TagAttributes): Promise<Tag> => {
 		try {

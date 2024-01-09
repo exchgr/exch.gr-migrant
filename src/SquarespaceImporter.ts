@@ -2,14 +2,14 @@ import {JSDOM} from "jsdom"
 import {ArticleAttributes} from "types/ArticleAttributes"
 import {TagAttributes} from "types/TagAttributes"
 import {DataContainer} from "types/DataContainer"
-import {ArticleTag} from "types/ArticleTag"
 import {DatumContainer} from "types/DatumContainer"
 import {CollectionAttributes} from "types/CollectionAttributes"
 import {CollectionArticles} from "types/CollectionArticles"
+import {TagArticles} from "types/TagArticles"
 
 export default class SquarespaceImporter {
 	import = (squarespaceData: string): DataContainer =>
-		this._convertToDataContainer(
+		this._collateToDataContainer(
 			this
 				._extractItems(squarespaceData)
 				.filter(this._isPost)
@@ -72,7 +72,7 @@ export default class SquarespaceImporter {
 			}
 		})
 
-	_convertToDataContainer = (datumContainers: DatumContainer[]): DataContainer => {
+	_collateToDataContainer = (datumContainers: DatumContainer[]): DataContainer => {
 		const seenTagSlugs: string[] = []
 		const seenCollectionSlugs: string[] = []
 
@@ -87,30 +87,27 @@ export default class SquarespaceImporter {
 				seenTagSlugs.includes(tagAttributes.slug) ? false : seenTagSlugs.push(tagAttributes.slug)
 			),
 
-			articleTags: datumContainers.flatMap((datumContainer) =>
-				datumContainer.tagAttributesCollection.map(this._connectArticleTag(datumContainer.articleAttributes))
-			),
-
 			collectionAttributesCollection: datumContainers.map((datumContainer) =>
 				datumContainer.collectionAttributes
 			).filter((collectionAttributes: CollectionAttributes) =>
 				seenCollectionSlugs.includes(collectionAttributes.slug) ? false : seenCollectionSlugs.push(collectionAttributes.slug)
 			),
 
+			tagArticles: datumContainers.reduce((tagArticles, datumContainer): TagArticles => {
+				datumContainer.tagAttributesCollection.forEach((tagAttributes) => {
+					tagArticles[tagAttributes.slug] ||= []
+					tagArticles[tagAttributes.slug].push(datumContainer.articleAttributes.slug)
+				})
+
+				return tagArticles
+			}, {} as TagArticles),
+
 			collectionArticles: datumContainers.reduce((collectionArticles, datumContainer): CollectionArticles => {
 				collectionArticles[datumContainer.collectionAttributes.slug] ||= []
-
 				collectionArticles[datumContainer.collectionAttributes.slug].push(datumContainer.articleAttributes.slug)
 
 				return collectionArticles
 			}, {} as CollectionArticles)
 		}
 	}
-
-	_connectArticleTag = (articleAttributes: ArticleAttributes) =>
-		(tagAttributes: TagAttributes): ArticleTag =>
-			({
-				articleSlug: articleAttributes.slug,
-				tagSlug: tagAttributes.slug
-			})
 }

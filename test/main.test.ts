@@ -69,7 +69,7 @@ describe("main", () => {
 		const dataContainer: DataContainer = {
 			articleAttributesCollection: [],
 			tagAttributesCollection: [],
-			articleTags: [],
+			tagArticles: {},
 			collectionAttributesCollection: [],
 			collectionArticles: {}
 		}
