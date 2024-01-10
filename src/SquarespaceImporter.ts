@@ -6,6 +6,7 @@ import {DatumContainer} from "types/DatumContainer"
 import {CollectionAttributes} from "types/CollectionAttributes"
 import {CollectionArticles} from "types/CollectionArticles"
 import {TagArticles} from "types/TagArticles"
+import {RedirectAttributes} from "types/RedirectAttributes"
 
 export default class SquarespaceImporter {
 	import = (squarespaceData: string): DataContainer =>
@@ -57,19 +58,28 @@ export default class SquarespaceImporter {
 		)[0].value
 	})
 
+	_extractRedirectAttributes = (item: Element): RedirectAttributes => ({
+		from: item.querySelector("link")!.textContent!,
+		httpCode: 301
+	})
+
 	_convertToDatumContainer = (item: Element): DatumContainer =>
 		({
 			articleAttributes: this._convertToArticleAttributes(item),
+
 			tagAttributesCollection: this
 				._extractCategories(item)
 				.map(this._convertToTagAttributes)
 				.filter((tagAttributes) =>
 					tagAttributes.name != "Photography"
 				),
+
 			collectionAttributes: {
 				name: "Photography",
 				slug: "photography"
-			}
+			},
+
+			redirectAttributes: this._extractRedirectAttributes(item)
 		})
 
 	_collateToDataContainer = (datumContainers: DatumContainer[]): DataContainer => {
@@ -107,7 +117,11 @@ export default class SquarespaceImporter {
 				collectionArticles[datumContainer.collectionAttributes.slug].push(datumContainer.articleAttributes.slug)
 
 				return collectionArticles
-			}, {} as CollectionArticles)
+			}, {} as CollectionArticles),
+
+			redirectAttributesCollection: datumContainers.map((datumContainer: DatumContainer) => (
+				datumContainer.redirectAttributes
+			))
 		}
 	}
 }

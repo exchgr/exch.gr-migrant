@@ -5,6 +5,7 @@ import {ArticleAttributes} from "../src/types/ArticleAttributes"
 import {TagAttributes} from "../src/types/TagAttributes"
 import {DataContainer} from "../src/types/DataContainer"
 import {DatumContainer} from "../src/types/DatumContainer"
+import {RedirectAttributes} from "../src/types/RedirectAttributes"
 
 describe("SquarespaceImporter", () => {
 	const pubDate = new Date("Mon, 02 Jan 2023 01:08:58 +0000");
@@ -79,7 +80,17 @@ describe("SquarespaceImporter", () => {
 						"rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
 						"another-post-2023-12-22"
 					]
-				}
+				},
+
+				redirectAttributesCollection: [
+					{
+						from: "/fotoblog/rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+						httpCode: 301
+					}, {
+						from: "/fotoblog/another-post-2023-12-22",
+						httpCode: 301
+					}
+				]
 			}
 
 			const squarespaceImporter = new SquarespaceImporter()
@@ -277,6 +288,11 @@ describe("SquarespaceImporter", () => {
 				collectionAttributes: {
 					name: "Photography",
 					slug: "photography"
+				},
+
+				redirectAttributes: {
+					from: "/fotoblog/rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+					httpCode: 301
 				}
 			}
 
@@ -327,6 +343,11 @@ describe("SquarespaceImporter", () => {
 				collectionAttributes: {
 					name: "Photography",
 					slug: "photography"
+				},
+
+				redirectAttributes: {
+					from: "/fotoblog/rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+					httpCode: 301
 				}
 			},{
 				articleAttributes: {
@@ -350,6 +371,11 @@ describe("SquarespaceImporter", () => {
 				collectionAttributes: {
 					name: "Photography",
 					slug: "photography"
+				},
+
+				redirectAttributes: {
+					from: "/fotoblog/another-post-2023-12-22",
+					httpCode: 301
 				}
 			}]
 
@@ -420,12 +446,43 @@ describe("SquarespaceImporter", () => {
 						"rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
 						"another-post-2023-12-22"
 					]
-				}
+				},
+
+				redirectAttributesCollection: [
+					{
+						from: "/fotoblog/rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+						httpCode: 301
+					}, {
+						from: "/fotoblog/another-post-2023-12-22",
+						httpCode: 301
+					}
+				]
 			}
 
 			const squarespaceImporter = new SquarespaceImporter()
 
 			expect(squarespaceImporter._collateToDataContainer(datumContainers)).to.deep.eq(expectedDataContainer)
+		})
+	})
+
+	describe("_convertToRedirectAttributes", () => {
+		it("should return a RedirectAttributes object with only the 'from' field populated", () => {
+			const item = new JSDOM(
+				publishedPostXml,
+				{
+					contentType: "text/xml",
+					url: "http://localhost"
+				}
+			).window.document.querySelector("item")!
+
+			const expectedRedirectAttributes: RedirectAttributes = {
+				from: "/fotoblog/rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
+				httpCode: 301
+			}
+
+			const squarespaceImporter = new SquarespaceImporter()
+
+			expect(squarespaceImporter._extractRedirectAttributes(item)).to.deep.eq(expectedRedirectAttributes)
 		})
 	})
 })

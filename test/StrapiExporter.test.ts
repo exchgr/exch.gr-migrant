@@ -170,7 +170,8 @@ describe("StrapiExporter", () => {
 					extantCollectionAttributes,
 					newCollectionAttributes
 				],
-				collectionArticles
+				collectionArticles,
+				redirectAttributesCollection: []
 			}
 
 			const extantArticle: Article = {
