@@ -17,6 +17,8 @@ import {CollectionAttributes} from "../src/types/CollectionAttributes"
 import {Collection} from "../src/types/Collection"
 import {CollectionArticles} from "../src/types/CollectionArticles"
 import {TagArticles} from "../src/types/TagArticles"
+import {RedirectAttributes} from "../src/types/RedirectAttributes"
+import {Redirect} from "../src/types/Redirect"
 
 chai.use(sinonChai)
 chai.use(chaiAsPromised)
@@ -26,8 +28,8 @@ describe("StrapiExporter", () => {
 
 	describe("export", () => {
 		it("should update extant articles and create new ones", async () => {
-			const extantArticleSlug = "hi"
-			const newArticleSlug = "hey"
+			const extantArticleSlug = "extant-article"
+			const newArticleSlug = "new-article"
 
 			const extantArticleId = 12345
 			const newArticleId = 12346
@@ -156,6 +158,48 @@ describe("StrapiExporter", () => {
 				[extantCollectionSlug]: [newArticleSlug]
 			}
 
+			const newRedirectAttributes: RedirectAttributes = {
+				from: `/fotoblog/${extantArticleSlug}`,
+				httpCode: 301
+			}
+
+			const newRedirect: Redirect = {
+				attributes: newRedirectAttributes,
+				meta: {}
+			}
+
+			const newRedirectWithArticleId: Redirect = {
+				...newRedirect,
+				attributes: {
+					...newRedirectAttributes,
+					to: extantArticleId
+				}
+			}
+
+			const createdNewRedirectWithArticleId: Redirect = {
+				id: 2,
+				...newRedirectWithArticleId,
+			}
+
+			const extantRedirectAttributes: RedirectAttributes = {
+				from: `/fotoblog/${newArticleSlug}`,
+				httpCode: 301
+			}
+
+			const extantRedirect: Redirect = {
+				id: 1,
+				attributes: extantRedirectAttributes,
+				meta: {}
+			}
+
+			const extantRedirectWithArticleId: Redirect = {
+				...extantRedirect,
+				attributes: {
+					...extantRedirectAttributes,
+					to: newArticleId
+				}
+			}
+
 			const dataContainer: DataContainer = {
 				articleAttributesCollection: [
 					extantArticleAttributes,
@@ -171,7 +215,10 @@ describe("StrapiExporter", () => {
 					newCollectionAttributes
 				],
 				collectionArticles,
-				redirectAttributesCollection: []
+				redirectAttributesCollection: [
+					newRedirectAttributes,
+					extantRedirectAttributes
+				]
 			}
 
 			const extantArticle: Article = {
@@ -206,6 +253,8 @@ describe("StrapiExporter", () => {
 				.withArgs(newTagWithArticleIds).returns(false)
 				.withArgs(extantCollectionWithArticleIds).returns(true)
 				.withArgs(newCollectionWithArticleIds).returns(false)
+				.withArgs(extantRedirect).returns(true)
+				.withArgs(newRedirect).returns(false)
 
 			stub(strapiExporter, "_updateArticle").withArgs(extantArticle).resolves(extantArticle)
 
@@ -239,13 +288,25 @@ describe("StrapiExporter", () => {
 				[extantCollection, newCollection]
 			).returns([extantCollectionWithArticleIds, newCollectionWithArticleIds])
 
+			stub(strapiExporter, "_findOrInitRedirect")
+				.withArgs(newRedirectAttributes).resolves(newRedirect)
+				.withArgs(extantRedirectAttributes).resolves(extantRedirect)
+
+			stub(strapiExporter, "_createRedirect")
+				.withArgs(newRedirect).resolves(createdNewRedirectWithArticleId)
+
+			stub(strapiExporter, "_updateRedirect")
+				.withArgs(extantRedirect).resolves(extantRedirectWithArticleId)
+
 			expect(await strapiExporter.export(dataContainer)).to.deep.eq([
 				createdNewArticle,
 				extantArticle,
 				createdNewTagWithArticleIds,
 				extantTagWithArticleIds,
 				createdNewCollectionWithArticleIds,
-				extantCollectionWithArticleIds
+				extantCollectionWithArticleIds,
+				createdNewRedirectWithArticleId,
+				extantRedirectWithArticleId
 			])
 		})
 	})
@@ -975,6 +1036,181 @@ describe("StrapiExporter", () => {
 			expect(strapiExporter._connectArticlesToCollections(
 				collectionArticles, articles, collections
 			)).to.deep.eq(collectionsWithArticleIds)
+		})
+	})
+
+	describe("_findOrInitRedirect", () => {
+		it("should return an existing redirect, updated with incoming RedirectAttributes data", async () => {
+			const id = 12345
+
+			const from = "/fotoblog/hi"
+
+			const hiRedirectAttributes: RedirectAttributes = {
+				from,
+				httpCode: 301
+			}
+
+			const hiQueryParams: StrapiRequestParams = {
+				filters: {
+					from: {
+						$eq: from
+					}
+				}
+			}
+
+			const hiRedirect: Redirect = {
+				id: id,
+				attributes: hiRedirectAttributes,
+				meta: {}
+			}
+
+			const strapi = new Strapi({ url: strapiUrl })
+
+			stub(strapi, "find").withArgs('redirects', hiQueryParams).resolves({
+				data: [{
+					id: id,
+					attributes: {
+						from,
+					},
+					meta: {}
+				}],
+				meta: {}
+			} as StrapiResponse<Redirect[]>)
+
+			const strapiExporter = new StrapiExporter(strapi)
+
+			expect(await strapiExporter._findOrInitRedirect(hiRedirectAttributes)).to.deep.eq(hiRedirect)
+		})
+
+		it("should return a new redirect if one doesn't exist", async () => {
+			const from = "/fotoblog/hey"
+
+			const heyRedirectAttributes: RedirectAttributes = {
+				from,
+				httpCode: 301
+			}
+
+			const heyQueryParams: StrapiRequestParams = {
+				filters: {
+					from: {
+						$eq: from
+					}
+				}
+			}
+
+			const heyRedirect: Redirect = {
+				attributes: heyRedirectAttributes,
+				meta: {}
+			}
+
+			const strapi = new Strapi({ url: strapiUrl })
+
+			stub(strapi, "find").withArgs('redirects', heyQueryParams).rejects({
+				data: null,
+				error: {
+					status: 404,
+					name: "NotFoundError",
+					message: "Not Found",
+					details: {},
+				},
+			} as StrapiError)
+
+			const strapiExporter = new StrapiExporter(strapi)
+
+			expect(await strapiExporter._findOrInitRedirect(heyRedirectAttributes)).to.deep.eq(heyRedirect)
+		})
+
+		it("should rethrow all other errors", async () => {
+			const from = "hey"
+
+			const heyTagAttributes: RedirectAttributes = {
+				from,
+				httpCode: 301
+			}
+
+			const heyQueryParams: StrapiRequestParams = {
+				filters: {
+					from: {
+						$eq: from
+					}
+				}
+			}
+
+			const error = {
+				status: 502,
+				name: "BadGatewayError",
+				message: "Bad Gateway",
+				details: {},
+			}
+
+			const strapi = new Strapi({ url: strapiUrl })
+
+			stub(strapi, "find").withArgs('redirects', heyQueryParams).rejects({
+				data: null,
+				error: error,
+			} as StrapiError)
+
+			const strapiExporter = new StrapiExporter(strapi)
+
+			expect(strapiExporter._findOrInitRedirect(heyTagAttributes)).to.be.rejectedWith(error)
+		})
+	})
+
+	describe("_createRedirect", () => {
+		it("should create a new redirect", async () => {
+			const newRedirectAttributes: RedirectAttributes = {
+				from: "/fotoblog/hey",
+				httpCode: 301
+			}
+
+			const newRedirect: Redirect = {
+				attributes: newRedirectAttributes,
+				meta: {}
+			}
+
+			const createdRedirect: Redirect = {
+				id: 1,
+				...newRedirect
+			}
+
+			const strapi = new Strapi({ url: strapiUrl })
+
+			stub(strapi, "create").withArgs('redirects', newRedirectAttributes).resolves({
+				data: createdRedirect,
+				meta: {}
+			})
+
+			const strapiExporter = new StrapiExporter(strapi)
+
+			expect(await strapiExporter._createRedirect(newRedirect)).to.eq(createdRedirect)
+		})
+	})
+
+	describe("_updateRedirect", () => {
+		it("should update an existing redirect", async () => {
+			const id = 12345
+
+			const extantRedirectAttributes: RedirectAttributes = {
+				from: "/fotoblog/hi",
+				httpCode: 301
+			}
+
+			const redirect: Redirect = {
+				id: id,
+				attributes: extantRedirectAttributes,
+				meta: {}
+			}
+
+			const strapi = new Strapi({url: strapiUrl})
+
+			stub(strapi, "update").withArgs('redirects', id, extantRedirectAttributes).resolves({
+				data: redirect,
+				meta: {}
+			})
+
+			const strapiExporter = new StrapiExporter(strapi)
+
+			expect(await strapiExporter._updateRedirect(redirect)).to.eq(redirect)
 		})
 	})
 })

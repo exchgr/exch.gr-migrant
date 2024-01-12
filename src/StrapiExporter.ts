@@ -9,6 +9,9 @@ import {CollectionAttributes} from "types/CollectionAttributes"
 import {Collection} from "types/Collection"
 import {CollectionArticles} from "types/CollectionArticles"
 import {TagArticles} from "types/TagArticles"
+import {RedirectAttributes} from "types/RedirectAttributes"
+import {Redirect} from "types/Redirect"
+import {Entity} from "types/Entity"
 
 export class StrapiExporter {
 	private strapi: Strapi
@@ -17,7 +20,7 @@ export class StrapiExporter {
 		this.strapi = strapi
 	}
 
-	export = async (dataContainer: DataContainer): Promise<(Article | Tag | Collection)[]> => {
+	export = async (dataContainer: DataContainer): Promise<(Entity)[]> => {
 		const [extantArticles, newArticles]: Article[][] = partition(
 			await Promise.all(dataContainer.articleAttributesCollection.map(this._findOrInitArticle)),
 			this._exists
@@ -40,26 +43,35 @@ export class StrapiExporter {
 			this._exists
 		)
 
-		const collections = await Promise.all(dataContainer.collectionAttributesCollection.map(this._findOrInitCollection))
-
 		const [extantCollections, newCollections]: Collection[][] = partition(
 			this._connectArticlesToCollections(
 				dataContainer.collectionArticles,
 				ensuredArticles,
-				collections
+				await Promise.all(
+					dataContainer.collectionAttributesCollection.map(
+						this._findOrInitCollection
+					)
+				)
+			),
+			this._exists
+		)
+
+		const [extantRedirects, newRedirects]: Redirect[][] = partition(
+			await Promise.all(
+				dataContainer.redirectAttributesCollection.map(this._findOrInitRedirect)
 			),
 			this._exists
 		)
 
 		return [
 			...ensuredArticles,
-			...await promiseSequence<Article | Tag>([
+			...await promiseSequence<Entity>([
 				...newTags.map(this._createTag),
 				...extantTags.map(this._updateTag),
-			]),
-			...await promiseSequence<Collection>([
 				...newCollections.map(this._createCollection),
-				...extantCollections.map(this._updateCollection)
+				...extantCollections.map(this._updateCollection),
+				...newRedirects.map(this._createRedirect),
+				...extantRedirects.map(this._updateRedirect)
 			])
 		]
 	}
@@ -96,7 +108,7 @@ export class StrapiExporter {
 	_updateArticle = async (article: Article): Promise<Article> =>
 		(await this.strapi.update<Article>('articles', article.id!, article.attributes)).data
 
-	_exists = (entity: Article | Tag | Collection) => !!entity.id
+	_exists = (entity: Entity) => !!entity.id
 
 	// it's complex because we're complecting. deal with it.
 	_connectArticlesToTags = (tagArticles: TagArticles, articles: Article[], tags: Tag[]): Tag[] =>
@@ -186,6 +198,36 @@ export class StrapiExporter {
 					collectionArticles[collection.attributes.slug].includes(article.attributes.slug )
 				).map((article: Article) => article.id!)
 			}
-		})
-		)
+		}))
+
+	_findOrInitRedirect = async (redirectAttributes: RedirectAttributes): Promise<Redirect> => {
+		try {
+			const redirect: Redirect = (await this.strapi.find<Redirect[]>('redirects', {
+				filters: {
+					from: {
+						$eq: redirectAttributes.from
+					}
+				}
+			})).data[0]
+
+			redirect.attributes = redirectAttributes
+
+			return redirect
+		} catch (e: any) {
+			if (e.error.name !== "NotFoundError") {
+				throw e
+			}
+
+			return {
+				attributes: redirectAttributes,
+				meta: {}
+			} as Redirect
+		}
+	}
+
+	_createRedirect = async (redirect: Redirect): Promise<Redirect> =>
+		(await this.strapi.create<Redirect>('redirects', redirect.attributes)).data
+
+	_updateRedirect = async (redirect: Redirect): Promise<Redirect> =>
+		(await this.strapi.update<Redirect>('redirects', redirect.id!, redirect.attributes)).data
 }
