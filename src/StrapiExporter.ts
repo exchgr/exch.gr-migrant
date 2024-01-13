@@ -1,17 +1,14 @@
 import {Article} from "types/Article"
-import {ArticleAttributes} from "types/ArticleAttributes"
 import Strapi from "strapi-sdk-js"
 import {partition, promiseSequence} from "./lib/util"
-import {TagAttributes} from "types/TagAttributes"
 import {Tag} from "types/Tag"
 import {DataContainer} from "types/DataContainer"
-import {CollectionAttributes} from "types/CollectionAttributes"
 import {Collection} from "types/Collection"
 import {CollectionArticles} from "types/CollectionArticles"
 import {TagArticles} from "types/TagArticles"
-import {RedirectAttributes} from "types/RedirectAttributes"
 import {Redirect} from "types/Redirect"
 import {Entity} from "types/Entity"
+import {Table} from "types/Table"
 
 export class StrapiExporter {
 	private strapi: Strapi
@@ -22,7 +19,7 @@ export class StrapiExporter {
 
 	export = async (dataContainer: DataContainer): Promise<(Entity)[]> => {
 		const [extantArticles, newArticles]: Article[][] = partition(
-			await Promise.all(dataContainer.articleAttributesCollection.map(this._findOrInitArticle)),
+			await Promise.all(dataContainer.articleAttributesCollection.map(this._findOrInitEntityByProperty<Article>('articles', 'slug'))),
 			this._exists
 		)
 
@@ -37,7 +34,9 @@ export class StrapiExporter {
 				dataContainer.tagArticles,
 				ensuredArticles,
 				await Promise.all(
-					dataContainer.tagAttributesCollection.map(this._findOrInitTag)
+					dataContainer.tagAttributesCollection.map(
+						this._findOrInitEntityByProperty<Tag>('tags', 'slug')
+					)
 				)
 			),
 			this._exists
@@ -49,7 +48,7 @@ export class StrapiExporter {
 				ensuredArticles,
 				await Promise.all(
 					dataContainer.collectionAttributesCollection.map(
-						this._findOrInitCollection
+						this._findOrInitEntityByProperty<Collection>('collections', 'slug')
 					)
 				)
 			),
@@ -58,7 +57,7 @@ export class StrapiExporter {
 
 		const [extantRedirects, newRedirects]: Redirect[][] = partition(
 			await Promise.all(
-				dataContainer.redirectAttributesCollection.map(this._findOrInitRedirect)
+				dataContainer.redirectAttributesCollection.map(this._findOrInitEntityByProperty<Redirect>('redirects', 'from'))
 			),
 			this._exists
 		)
@@ -76,31 +75,35 @@ export class StrapiExporter {
 		]
 	}
 
-	_findOrInitArticle = async (articleAttributes: ArticleAttributes): Promise<Article> => {
-		try {
-			const article: Article = (await this.strapi.find<Article[]>('articles', {
-				filters: {
-					slug: {
-						$eq: articleAttributes.slug
+	_findOrInitEntityByProperty = <T extends Entity>(
+		table: Table,
+		property: keyof T["attributes"]
+	): (entityAttributes: T["attributes"]) => Promise<T> =>
+		async (entityAttributes: T["attributes"]): Promise<T> => {
+			try {
+				const entity: T = (await this.strapi.find<T[]>(table, {
+					filters: {
+						[property]: {
+							$eq: entityAttributes[property]
+						}
 					}
+				})).data[0]
+
+				entity.attributes = entityAttributes
+
+				return entity
+			} catch (e: any) {
+				if (e.error.name !== "NotFoundError") {
+					throw e
 				}
-			})).data[0]
 
-			article.attributes = articleAttributes
-
-			return article
-		} catch (e: any) {
-			if (e.error.name !== "NotFoundError") {
-				throw e
+				return {
+					id: undefined,
+					attributes: entityAttributes,
+					meta: {}
+				} as T
 			}
-
-			return {
-				id: undefined,
-				attributes: articleAttributes,
-				meta: {}
-			} as Article
 		}
-	}
 
 	_createArticle = async (article: Article): Promise<Article> =>
 		(await this.strapi.create<Article>('articles', article.attributes)).data
@@ -110,7 +113,6 @@ export class StrapiExporter {
 
 	_exists = (entity: Entity) => !!entity.id
 
-	// it's complex because we're complecting. deal with it.
 	_connectArticlesToTags = (tagArticles: TagArticles, articles: Article[], tags: Tag[]): Tag[] =>
 		tags.map((tag): Tag => ({
 			...tag,
@@ -122,62 +124,11 @@ export class StrapiExporter {
 			}
 		}))
 
-	_findOrInitTag = async (tagAttributes: TagAttributes): Promise<Tag> => {
-		try {
-			const tag: Tag = (await this.strapi.find<Tag[]>('tags', {
-				filters: {
-					slug: {
-						$eq: tagAttributes.slug
-					}
-				}
-			})).data[0]
-
-			tag.attributes = tagAttributes
-
-			return tag
-		} catch (e: any) {
-			if (e.error.name !== "NotFoundError") {
-				throw e
-			}
-
-			return {
-				id: undefined,
-				attributes: tagAttributes,
-				meta: {}
-			} as Tag
-		}
-	}
-
 	_createTag = async (tag: Tag): Promise<Tag> =>
 		(await this.strapi.create<Tag>('tags', tag.attributes)).data
 
 	_updateTag = async (tag: Tag): Promise<Tag> =>
 		(await this.strapi.update<Tag>('tags', tag.id!, tag.attributes)).data
-
-	_findOrInitCollection = async (collectionAttributes: CollectionAttributes): Promise<Collection> => {
-		try {
-			const collection: Collection = (await this.strapi.find<Collection[]>('collections', {
-				filters: {
-					slug: {
-						$eq: collectionAttributes.slug
-					}
-				}
-			})).data[0]
-
-			collection.attributes = collectionAttributes
-
-			return collection
-		} catch (e: any) {
-			if (e.error.name !== "NotFoundError") {
-				throw e
-			}
-
-			return {
-				attributes: collectionAttributes,
-				meta: {}
-			} as Collection
-		}
-	}
 
 	_createCollection = async (collection: Collection): Promise<Collection> =>
 		(await this.strapi.create<Collection>('collections', collection.attributes)).data
@@ -199,31 +150,6 @@ export class StrapiExporter {
 				).map((article: Article) => article.id!)
 			}
 		}))
-
-	_findOrInitRedirect = async (redirectAttributes: RedirectAttributes): Promise<Redirect> => {
-		try {
-			const redirect: Redirect = (await this.strapi.find<Redirect[]>('redirects', {
-				filters: {
-					from: {
-						$eq: redirectAttributes.from
-					}
-				}
-			})).data[0]
-
-			redirect.attributes = redirectAttributes
-
-			return redirect
-		} catch (e: any) {
-			if (e.error.name !== "NotFoundError") {
-				throw e
-			}
-
-			return {
-				attributes: redirectAttributes,
-				meta: {}
-			} as Redirect
-		}
-	}
 
 	_createRedirect = async (redirect: Redirect): Promise<Redirect> =>
 		(await this.strapi.create<Redirect>('redirects', redirect.attributes)).data

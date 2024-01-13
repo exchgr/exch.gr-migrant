@@ -19,9 +19,35 @@ import {CollectionArticles} from "../src/types/CollectionArticles"
 import {TagArticles} from "../src/types/TagArticles"
 import {RedirectAttributes} from "../src/types/RedirectAttributes"
 import {Redirect} from "../src/types/Redirect"
+import {Entity} from "../src/types/Entity"
+import {Table} from "../src/types/Table"
 
 chai.use(sinonChai)
 chai.use(chaiAsPromised)
+
+type FindOrInitEntityByPropertyExtantTestDatum<T extends Entity> = {
+	titleEntityName: string,
+	id: 12345,
+	propertyName: keyof T["attributes"]
+	propertyValue: string
+	entityAttributes: T["attributes"]
+	table: Table
+}
+
+type FindOrInitEntityByPropertyNewTestDatum<T extends Entity> = {
+	titleEntityName: string,
+	propertyName: keyof T["attributes"]
+	propertyValue: string
+	entityAttributes: T["attributes"]
+	table: Table
+}
+
+type FindOrInitEntityByPropertyErrorTestDatum<T extends Entity> = {
+	propertyName: keyof T["attributes"]
+	propertyValue: string
+	entityAttributes: T["attributes"]
+	table: Table
+}
 
 describe("StrapiExporter", () => {
 	const strapiUrl = "http://localhost:1337"
@@ -242,9 +268,43 @@ describe("StrapiExporter", () => {
 
 			const strapiExporter = new StrapiExporter(strapi)
 
-			stub(strapiExporter, "_findOrInitArticle")
-				.withArgs(extantArticleAttributes).resolves(extantArticle)
-				.withArgs(newArticleAttributes).resolves(newArticle)
+			const findOrInitEntity: <T extends Entity>(entityAttributes: T["attributes"]) => Promise<T> = async <T extends Entity>(entityAttributes: T["attributes"]): Promise<T> => {
+				switch (entityAttributes) {
+					case extantArticleAttributes: {
+						return extantArticle as T
+					}
+					case newArticleAttributes: {
+						return newArticle as T
+					}
+					case extantTagAttributes: {
+						return extantTag as T
+					}
+					case newTagAttributes: {
+						return newTag as T
+					}
+					case newCollectionAttributes: {
+						return newCollection as T
+					}
+					case extantCollectionAttributes: {
+						return extantCollection as T
+					}
+					case newRedirectAttributes: {
+						return newRedirect as T
+					}
+					case extantRedirectAttributes: {
+						return extantRedirect as T
+					}
+					default: {
+						return {} as T
+					}
+				}
+			}
+
+			stub(strapiExporter, "_findOrInitEntityByProperty")
+				.withArgs('articles', match('slug')).returns(findOrInitEntity)
+				.withArgs('tags', match('slug')).returns(findOrInitEntity)
+				.withArgs('collections', match('slug')).returns(findOrInitEntity)
+				.withArgs('redirects', match('from')).returns(findOrInitEntity)
 
 			stub(strapiExporter, "_exists")
 				.withArgs(extantArticle).returns(true)
@@ -266,17 +326,10 @@ describe("StrapiExporter", () => {
 				[extantTag, newTag]
 			).returns([extantTagWithArticleIds, newTagWithArticleIds])
 
-			stub(strapiExporter, "_findOrInitTag")
-				.withArgs(extantTagAttributes).resolves(extantTag)
-				.withArgs(newTagAttributes).resolves(newTag)
-
 			stub(strapiExporter, "_createTag").withArgs(newTagWithArticleIds).resolves(createdNewTagWithArticleIds)
 
 			stub(strapiExporter, "_updateTag").withArgs(extantTagWithArticleIds).resolves(extantTagWithArticleIds)
 
-			stub(strapiExporter, "_findOrInitCollection")
-				.withArgs(newCollectionAttributes).resolves(newCollection)
-				.withArgs(extantCollectionAttributes).resolves(extantCollection)
 
 			stub(strapiExporter, "_createCollection").withArgs(newCollectionWithArticleIds).resolves(createdNewCollectionWithArticleIds)
 
@@ -287,10 +340,6 @@ describe("StrapiExporter", () => {
 				match.array.deepEquals([createdNewArticle, extantArticle]),
 				[extantCollection, newCollection]
 			).returns([extantCollectionWithArticleIds, newCollectionWithArticleIds])
-
-			stub(strapiExporter, "_findOrInitRedirect")
-				.withArgs(newRedirectAttributes).resolves(newRedirect)
-				.withArgs(extantRedirectAttributes).resolves(extantRedirect)
 
 			stub(strapiExporter, "_createRedirect")
 				.withArgs(newRedirect).resolves(createdNewRedirectWithArticleId)
@@ -311,141 +360,253 @@ describe("StrapiExporter", () => {
 		})
 	})
 
-	describe("_findOrInitArticle", () => {
+	describe("_findOrInitEntityByProperty", () => {
 		const date = new Date()
 
-		it("should return an existing article, updated with incoming articleAttributes data", async () => {
-			const id = 12345
-
-			const hiSlug = "hi"
-
-			const hiArticleAttributes: ArticleAttributes = {
-				title: "hi",
-				body: "<article>hi</article>",
-				slug: hiSlug,
-				author: "me",
-				og_type: "poast",
-				createdAt: date,
-				updatedAt: date,
-				publishedAt: date
-			}
-
-			const hiQueryParams: StrapiRequestParams = {
-				filters: {
-					slug: {
-						$eq: hiSlug
-					}
-				}
-			}
-
-			const article: Article = {
-				id: id,
-				attributes: hiArticleAttributes,
-				meta: {}
-			}
-
-			const strapi = new Strapi({ url: strapiUrl })
-
-			stub(strapi, "find").withArgs('articles', hiQueryParams).resolves({
-				data: [{
-					id: id,
-					attributes: {
-						slug: hiSlug
-					},
-					meta: {}
-				}],
-				meta: {}
-			} as StrapiResponse<Article[]>)
-
-			const strapiExporter = new StrapiExporter(strapi)
-
-			expect(await strapiExporter._findOrInitArticle(hiArticleAttributes)).to.deep.eq(article)
-		})
-
-		it("should return a new article if one doesn't exist", async () => {
-			const heySlug = "hey"
-
-			const heyArticleAttributes: ArticleAttributes = {
-				title: "hey",
-				body: "<article>hey</article>",
-				slug: heySlug,
-				author: "me",
-				og_type: "poast",
-				createdAt: date,
-				updatedAt: date,
-				publishedAt: date
-			}
-
-			const heyQueryParams: StrapiRequestParams = {
-				filters: {
-					slug: {
-						$eq: heySlug
-					}
-				}
-			}
-
-			const article: Article = {
-				id: undefined,
-				attributes: heyArticleAttributes,
-				meta: {}
-			}
-
-			const strapi = new Strapi({ url: strapiUrl })
-
-			stub(strapi, "find").withArgs('articles', heyQueryParams).rejects({
-				data: null,
-				error: {
-					status: 404,
-					name: "NotFoundError",
-					message: "Not Found",
-					details: {},
+		const findOrInitEntityByPropertyExtantTestData: FindOrInitEntityByPropertyExtantTestDatum<any>[] = [
+			{
+				titleEntityName: 'article',
+				id: 12345,
+				propertyName: "slug",
+				propertyValue: "hi",
+				entityAttributes: {
+					title: "hi",
+					body: "<article>hi</article>",
+					slug: "hi",
+					author: "me",
+					og_type: "poast",
+					createdAt: date,
+					updatedAt: date,
+					publishedAt: date
 				},
-			} as StrapiError)
+				table: 'articles',
+			} as FindOrInitEntityByPropertyExtantTestDatum<Article>,
+			{
+				titleEntityName: 'tag',
+				id: 12345,
+				propertyName: "slug",
+				propertyValue: "hi",
+				entityAttributes: {
+					name: "Hi",
+					slug: "hi"
+				},
+				table: 'tags'
+			} as FindOrInitEntityByPropertyExtantTestDatum<Tag>,
+			{
+				titleEntityName: 'collection',
+				id: 12345,
+				propertyName: "slug",
+				propertyValue: "code",
+				entityAttributes: {
+					name: "Code",
+					slug: "code"
+				},
+				table: 'collections'
+			} as FindOrInitEntityByPropertyExtantTestDatum<Collection>,
+			{
+				titleEntityName: 'redirect',
+				id: 12345,
+				propertyName: "from",
+				propertyValue: "/fotoblog/hi",
+				entityAttributes: {
+					from: "/fotoblog/hi",
+					httpCode: 301
+				},
+				table: 'redirects'
+			} as FindOrInitEntityByPropertyExtantTestDatum<Redirect>
+		]
 
-			const strapiExporter = new StrapiExporter(strapi)
-
-			expect(await strapiExporter._findOrInitArticle(heyArticleAttributes)).to.deep.eq(article)
-		})
-
-		it("should rethrow all other errors", async () => {
-			const heySlug = "hey"
-
-			const heyArticleAttributes: ArticleAttributes = {
-				title: "hey",
-				body: "<article>hey</article>",
-				slug: heySlug,
-				author: "me",
-				og_type: "poast",
-				createdAt: date,
-				updatedAt: date,
-				publishedAt: date
-			}
-
-			const heyQueryParams: StrapiRequestParams = {
-				filters: {
-					slug: {
-						$eq: heySlug
+		findOrInitEntityByPropertyExtantTestData.forEach(<T extends Entity>(testDatum: FindOrInitEntityByPropertyExtantTestDatum<T>) => {
+			it(`should return an existing ${testDatum.titleEntityName}, updated with incoming ${testDatum.titleEntityName}Attributes data`, async () => {
+				const queryParams: StrapiRequestParams = {
+					filters: {
+						[testDatum.propertyName]: {
+							$eq: testDatum.propertyValue
+						}
 					}
 				}
-			}
 
-			const error = {
-				status: 502,
-				name: "BadGatewayError",
-				message: "Bad Gateway",
-				details: {},
-			}
+				const entity: T = {
+					id: testDatum.id,
+					attributes: testDatum.entityAttributes,
+					meta: {}
+				} as T
 
-			const strapi = new Strapi({ url: strapiUrl })
+				const strapi = new Strapi({ url: strapiUrl })
 
-			stub(strapi, "find").withArgs('articles', heyQueryParams).rejects({
-				data: null,
-				error: error,
-			} as StrapiError)
+				stub(strapi, "find").withArgs(testDatum.table, queryParams).resolves({
+					data: [{
+						id: testDatum.id,
+						attributes: {
+							[testDatum.propertyName]: testDatum.propertyValue
+						} as unknown as T["attributes"],
+						meta: {}
+					}],
+					meta: {}
+				} as StrapiResponse<T[]>)
 
-			const strapiExporter = new StrapiExporter(strapi)
+				const strapiExporter = new StrapiExporter(strapi)
 
-			expect(strapiExporter._findOrInitArticle(heyArticleAttributes)).to.be.rejectedWith(error)
+				expect(await strapiExporter._findOrInitEntityByProperty<T>(testDatum.table, testDatum.propertyName)(testDatum.entityAttributes)).to.deep.eq(entity)
+			})
+		})
+
+		const findOrInitEntityByPropertyNewTestData: FindOrInitEntityByPropertyNewTestDatum<any>[] = [
+			{
+				titleEntityName: "article",
+				propertyName: "slug",
+				propertyValue: "hey",
+				entityAttributes: {
+					title: "hey",
+					body: "<article>hey</article>",
+					slug: "hey",
+					author: "me",
+					og_type: "poast",
+					createdAt: date,
+					updatedAt: date,
+					publishedAt: date
+				},
+				table: "articles"
+			} as FindOrInitEntityByPropertyNewTestDatum<Article>,
+			{
+				titleEntityName: "tag",
+				propertyName: "slug",
+				propertyValue: "hey",
+				entityAttributes: {
+					name: "hey",
+					slug: "hey"
+				},
+				table: "tags"
+			} as FindOrInitEntityByPropertyNewTestDatum<Tag>,
+			{
+				titleEntityName: "collection",
+				propertyName: "slug",
+				propertyValue: "hey",
+				entityAttributes: {
+					name: "hey",
+					slug: "hey"
+				},
+				table: "collections"
+			} as FindOrInitEntityByPropertyNewTestDatum<Collection>,
+			{
+				titleEntityName: "redirect",
+				propertyName: "from",
+				propertyValue: "/fotoblog/hey",
+				entityAttributes: {
+					from: "/fotoblog/hey",
+					httpCode: 301
+				},
+				table: "redirects"
+			} as FindOrInitEntityByPropertyNewTestDatum<Redirect>
+		]
+
+		findOrInitEntityByPropertyNewTestData.forEach(<T extends Entity>(testDatum: FindOrInitEntityByPropertyNewTestDatum<T>) => {
+			it(`should return a new ${testDatum.titleEntityName} if one doesn't exist`, async () => {
+				const queryParams: StrapiRequestParams = {
+					filters: {
+						[testDatum.propertyName]: {
+							$eq: testDatum.propertyValue
+						}
+					}
+				}
+
+				const entity: T = {
+					id: undefined,
+					attributes: testDatum.entityAttributes,
+					meta: {}
+				} as T
+
+				const strapi = new Strapi({ url: strapiUrl })
+
+				stub(strapi, "find").withArgs(testDatum.table, queryParams).rejects({
+					data: null,
+					error: {
+						status: 404,
+						name: "NotFoundError",
+						message: "Not Found",
+						details: {},
+					},
+				} as StrapiError)
+
+				const strapiExporter = new StrapiExporter(strapi)
+
+				expect(await strapiExporter._findOrInitEntityByProperty<T>(testDatum.table, testDatum.propertyName)(testDatum.entityAttributes)).to.deep.eq(entity)
+			})
+		})
+
+		const findOrInitEntityByPropertyErrorTestData: FindOrInitEntityByPropertyErrorTestDatum<any>[] = [
+			{
+				propertyName: "slug",
+				propertyValue: "hey",
+				entityAttributes: {
+					title: "hey",
+					body: "<article>hey</article>",
+					slug: "hey",
+					author: "me",
+					og_type: "poast",
+					createdAt: date,
+					updatedAt: date,
+					publishedAt: date
+				},
+				table: "articles"
+			} as FindOrInitEntityByPropertyErrorTestDatum<Article>,
+			{
+				propertyName: "slug",
+				propertyValue: "hey",
+				entityAttributes: {
+					name: "hey",
+					slug: "hey",
+				},
+				table: "tags"
+			} as FindOrInitEntityByPropertyErrorTestDatum<Tag>,
+			{
+				propertyName: "slug",
+				propertyValue: "hey",
+				entityAttributes: {
+					name: "hey",
+					slug: "hey",
+				},
+				table: "collections"
+			} as FindOrInitEntityByPropertyErrorTestDatum<Collection>,
+			{
+				propertyName: "from",
+				propertyValue: "/fotoblog/hey",
+				entityAttributes: {
+					from: "/fotoblog/hey",
+					httpCode: 301
+				},
+				table: "redirects"
+			} as FindOrInitEntityByPropertyErrorTestDatum<Redirect>
+		]
+
+		findOrInitEntityByPropertyErrorTestData.forEach(<T extends Entity>(testDatum: FindOrInitEntityByPropertyErrorTestDatum<T>) => {
+			it("should rethrow all other errors", async () => {
+				const heyQueryParams: StrapiRequestParams = {
+					filters: {
+						[testDatum.propertyName]: {
+							$eq: testDatum.propertyValue
+						}
+					}
+				}
+
+				const error = {
+					status: 502,
+					name: "BadGatewayError",
+					message: "Bad Gateway",
+					details: {},
+				}
+
+				const strapi = new Strapi({ url: strapiUrl })
+
+				stub(strapi, "find").withArgs(testDatum.table, heyQueryParams).rejects({
+					data: null,
+					error: error,
+				} as StrapiError)
+
+				const strapiExporter = new StrapiExporter(strapi)
+
+				expect(strapiExporter._findOrInitEntityByProperty<T>(testDatum.table, testDatum.propertyName)(testDatum.entityAttributes)).to.be.rejectedWith(error)
+			})
 		})
 	})
 
@@ -567,124 +728,6 @@ describe("StrapiExporter", () => {
 		})
 	})
 
-	describe("_findOrInitTag", () => {
-		it("should return an existing tag, updated with incoming tagAttributes data", async () => {
-			const id = 12345
-
-			const hiSlug = "hi"
-
-			const hiTagAttributes: TagAttributes = {
-				name: hiSlug,
-				slug: hiSlug
-			}
-
-			const hiQueryParams: StrapiRequestParams = {
-				filters: {
-					slug: {
-						$eq: hiSlug
-					}
-				}
-			}
-
-			const hiTag: Tag = {
-				id: id,
-				attributes: hiTagAttributes,
-				meta: {}
-			}
-
-			const strapi = new Strapi({ url: strapiUrl })
-
-			stub(strapi, "find").withArgs('tags', hiQueryParams).resolves({
-				data: [{
-					id: id,
-					attributes: {
-						slug: hiSlug
-					},
-					meta: {}
-				}],
-				meta: {}
-			} as StrapiResponse<Tag[]>)
-
-			const strapiExporter = new StrapiExporter(strapi)
-
-			expect(await strapiExporter._findOrInitTag(hiTagAttributes)).to.deep.eq(hiTag)
-		})
-
-		it("should return a new tag if one doesn't exist", async () => {
-			const heySlug = "hey"
-
-			const heyTagAttributes: TagAttributes = {
-				name: "hey",
-				slug: heySlug
-			}
-
-			const heyQueryParams: StrapiRequestParams = {
-				filters: {
-					slug: {
-						$eq: heySlug
-					}
-				}
-			}
-
-			const heyTag: Tag = {
-				id: undefined,
-				attributes: heyTagAttributes,
-				meta: {}
-			}
-
-			const strapi = new Strapi({ url: strapiUrl })
-
-			stub(strapi, "find").withArgs('tags', heyQueryParams).rejects({
-				data: null,
-				error: {
-					status: 404,
-					name: "NotFoundError",
-					message: "Not Found",
-					details: {},
-				},
-			} as StrapiError)
-
-			const strapiExporter = new StrapiExporter(strapi)
-
-			expect(await strapiExporter._findOrInitTag(heyTagAttributes)).to.deep.eq(heyTag)
-		})
-
-		it("should rethrow all other errors", async () => {
-			const heySlug = "hey"
-
-			const heyTagAttributes: TagAttributes = {
-				name: "hey",
-				slug: heySlug,
-			}
-
-			const heyQueryParams: StrapiRequestParams = {
-				filters: {
-					slug: {
-						$eq: heySlug
-					}
-				}
-			}
-
-			const error = {
-				status: 502,
-				name: "BadGatewayError",
-				message: "Bad Gateway",
-				details: {},
-			}
-
-			const strapi = new Strapi({ url: strapiUrl })
-
-			stub(strapi, "find").withArgs('tags', heyQueryParams).rejects({
-				data: null,
-				error: error,
-			} as StrapiError)
-
-			const strapiExporter = new StrapiExporter(strapi)
-
-			expect(strapiExporter._findOrInitTag(heyTagAttributes)).to.be.rejectedWith(error)
-		})
-	})
-
 	describe("_connectArticlesToTags", () => {
 		it("should connect created articles to tags by putting articles' IDs into tags' articles field", () => {
 			const tagSlug = "tag"
@@ -799,123 +842,6 @@ describe("StrapiExporter", () => {
 			const strapiExporter = new StrapiExporter(strapi)
 
 			expect(await strapiExporter._updateTag(tag)).to.eq(tag)
-		})
-	})
-
-	describe("_findOrInitCollection", () => {
-		it("should return an existing collection, updated with incoming CollectionAttributes data", async () => {
-			const id = 12345
-
-			const extantCollectionSlug = "code"
-
-			const extantCollectionAttributes: CollectionAttributes = {
-				name: "Code",
-				slug: extantCollectionSlug
-			}
-
-			const extantCollectionQueryParams: StrapiRequestParams = {
-				filters: {
-					slug: {
-						$eq: extantCollectionSlug
-					}
-				}
-			}
-
-			const extantCollection: Collection = {
-				id: id,
-				attributes: extantCollectionAttributes,
-				meta: {}
-			}
-
-			const strapi = new Strapi({ url: strapiUrl })
-
-			stub(strapi, "find").withArgs('collections', extantCollectionQueryParams).resolves({
-				data: [{
-					id: id,
-					attributes: {
-						slug: extantCollectionSlug
-					},
-					meta: {}
-				}],
-				meta: {}
-			} as StrapiResponse<Collection[]>)
-
-			const strapiExporter = new StrapiExporter(strapi)
-
-			expect(await strapiExporter._findOrInitCollection(extantCollectionAttributes)).to.deep.eq(extantCollection)
-		})
-
-		it("should return a new collection if one doesn't exist", async () => {
-			const newCollectionSlug = "hey"
-
-			const newCollectionAttributes: CollectionAttributes = {
-				name: "hey",
-				slug: newCollectionSlug
-			}
-
-			const newCollectionQueryParams: StrapiRequestParams = {
-				filters: {
-					slug: {
-						$eq: newCollectionSlug
-					}
-				}
-			}
-
-			const newCollection: Collection = {
-				attributes: newCollectionAttributes,
-				meta: {}
-			}
-
-			const strapi = new Strapi({ url: strapiUrl })
-
-			stub(strapi, "find").withArgs('collections', newCollectionQueryParams).rejects({
-				data: null,
-				error: {
-					status: 404,
-					name: "NotFoundError",
-					message: "Not Found",
-					details: {},
-				},
-			} as StrapiError)
-
-			const strapiExporter = new StrapiExporter(strapi)
-
-			expect(await strapiExporter._findOrInitCollection(newCollectionAttributes)).to.deep.eq(newCollection)
-		})
-
-		it("should rethrow all other errors", async () => {
-			const collectionSlug = "hey"
-
-			const collectionAttributes: CollectionAttributes = {
-				name: "hey",
-				slug: collectionSlug,
-			}
-
-			const heyQueryParams: StrapiRequestParams = {
-				filters: {
-					slug: {
-						$eq: collectionSlug
-					}
-				}
-			}
-
-			const error = {
-				status: 502,
-				name: "BadGatewayError",
-				message: "Bad Gateway",
-				details: {},
-			}
-
-			const strapi = new Strapi({ url: strapiUrl })
-
-			stub(strapi, "find").withArgs('collections', heyQueryParams).rejects({
-				data: null,
-				error: error,
-			} as StrapiError)
-
-			const strapiExporter = new StrapiExporter(strapi)
-
-			expect(strapiExporter._findOrInitCollection(collectionAttributes)).to.be.rejectedWith(error)
 		})
 	})
 
@@ -1036,123 +962,6 @@ describe("StrapiExporter", () => {
 			expect(strapiExporter._connectArticlesToCollections(
 				collectionArticles, articles, collections
 			)).to.deep.eq(collectionsWithArticleIds)
-		})
-	})
-
-	describe("_findOrInitRedirect", () => {
-		it("should return an existing redirect, updated with incoming RedirectAttributes data", async () => {
-			const id = 12345
-
-			const from = "/fotoblog/hi"
-
-			const hiRedirectAttributes: RedirectAttributes = {
-				from,
-				httpCode: 301
-			}
-
-			const hiQueryParams: StrapiRequestParams = {
-				filters: {
-					from: {
-						$eq: from
-					}
-				}
-			}
-
-			const hiRedirect: Redirect = {
-				id: id,
-				attributes: hiRedirectAttributes,
-				meta: {}
-			}
-
-			const strapi = new Strapi({ url: strapiUrl })
-
-			stub(strapi, "find").withArgs('redirects', hiQueryParams).resolves({
-				data: [{
-					id: id,
-					attributes: {
-						from,
-					},
-					meta: {}
-				}],
-				meta: {}
-			} as StrapiResponse<Redirect[]>)
-
-			const strapiExporter = new StrapiExporter(strapi)
-
-			expect(await strapiExporter._findOrInitRedirect(hiRedirectAttributes)).to.deep.eq(hiRedirect)
-		})
-
-		it("should return a new redirect if one doesn't exist", async () => {
-			const from = "/fotoblog/hey"
-
-			const heyRedirectAttributes: RedirectAttributes = {
-				from,
-				httpCode: 301
-			}
-
-			const heyQueryParams: StrapiRequestParams = {
-				filters: {
-					from: {
-						$eq: from
-					}
-				}
-			}
-
-			const heyRedirect: Redirect = {
-				attributes: heyRedirectAttributes,
-				meta: {}
-			}
-
-			const strapi = new Strapi({ url: strapiUrl })
-
-			stub(strapi, "find").withArgs('redirects', heyQueryParams).rejects({
-				data: null,
-				error: {
-					status: 404,
-					name: "NotFoundError",
-					message: "Not Found",
-					details: {},
-				},
-			} as StrapiError)
-
-			const strapiExporter = new StrapiExporter(strapi)
-
-			expect(await strapiExporter._findOrInitRedirect(heyRedirectAttributes)).to.deep.eq(heyRedirect)
-		})
-
-		it("should rethrow all other errors", async () => {
-			const from = "hey"
-
-			const heyTagAttributes: RedirectAttributes = {
-				from,
-				httpCode: 301
-			}
-
-			const heyQueryParams: StrapiRequestParams = {
-				filters: {
-					from: {
-						$eq: from
-					}
-				}
-			}
-
-			const error = {
-				status: 502,
-				name: "BadGatewayError",
-				message: "Bad Gateway",
-				details: {},
-			}
-
-			const strapi = new Strapi({ url: strapiUrl })
-
-			stub(strapi, "find").withArgs('redirects', heyQueryParams).rejects({
-				data: null,
-				error: error,
-			} as StrapiError)
-
-			const strapiExporter = new StrapiExporter(strapi)
-
-			expect(strapiExporter._findOrInitRedirect(heyTagAttributes)).to.be.rejectedWith(error)
 		})
 	})
 
