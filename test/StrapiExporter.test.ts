@@ -55,6 +55,12 @@ type CreateEntityTestDatum<T extends Entity> = {
 	table: Table
 }
 
+type UpdateEntityTestDatum<T extends Entity> = {
+	titleEntityName: string
+	entityAttributes: T["attributes"]
+	table: Table
+}
+
 describe("StrapiExporter", () => {
 	const strapiUrl = "http://localhost:1337"
 
@@ -306,6 +312,7 @@ describe("StrapiExporter", () => {
 				}
 			}
 
+
 			stub(strapiExporter, "_findOrInitEntityByProperty")
 				.withArgs('articles', match('slug')).returns(findOrInitEntity)
 				.withArgs('tags', match('slug')).returns(findOrInitEntity)
@@ -322,7 +329,31 @@ describe("StrapiExporter", () => {
 				.withArgs(extantRedirect).returns(true)
 				.withArgs(newRedirect).returns(false)
 
-			stub(strapiExporter, "_updateArticle").withArgs(extantArticle).resolves(extantArticle)
+			const updateEntity = async <T extends Entity>(entity: T): Promise<T> => {
+				switch(entity) {
+					case extantArticle: {
+						return extantArticle as T
+					}
+					case extantTagWithArticleIds: {
+						return extantTagWithArticleIds as T
+					}
+					case extantCollectionWithArticleIds: {
+						return extantCollectionWithArticleIds as T
+					}
+					case extantRedirect: {
+						return extantRedirectWithArticleId as T
+					}
+					default: {
+						return {} as T
+					}
+				}
+			}
+
+			stub(strapiExporter, "_updateEntity")
+				.withArgs('articles').returns(updateEntity)
+				.withArgs('tags').returns(updateEntity)
+				.withArgs('collections').returns(updateEntity)
+				.withArgs('redirects').returns(updateEntity)
 
 			const createEntity = async <T extends Entity>(entity: T): Promise<T> => {
 				switch (entity) {
@@ -356,18 +387,11 @@ describe("StrapiExporter", () => {
 				[extantTag, newTag]
 			).returns([extantTagWithArticleIds, newTagWithArticleIds])
 
-			stub(strapiExporter, "_updateTag").withArgs(extantTagWithArticleIds).resolves(extantTagWithArticleIds)
-
-			stub(strapiExporter, "_updateCollection").withArgs(extantCollectionWithArticleIds).resolves(extantCollectionWithArticleIds)
-
 			stub(strapiExporter, "_connectArticlesToCollections").withArgs(
 				collectionArticles,
 				match.array.deepEquals([createdNewArticle, extantArticle]),
 				[extantCollection, newCollection]
 			).returns([extantCollectionWithArticleIds, newCollectionWithArticleIds])
-
-			stub(strapiExporter, "_updateRedirect")
-				.withArgs(extantRedirect).resolves(extantRedirectWithArticleId)
 
 			expect(await strapiExporter.export(dataContainer)).to.deep.eq([
 				createdNewArticle,
@@ -701,37 +725,69 @@ describe("StrapiExporter", () => {
 		})
 	})
 
-	describe("_updateArticle", () => {
-		it("should update an existing article", async () => {
-			const id = 12345
+	describe("_updateEntity", () => {
+		const updateEntityTestData: UpdateEntityTestDatum<Entity>[] = [
+			{
+				titleEntityName: "article",
+				entityAttributes: {
+					title: "hi",
+					body: "<article>hi</article>",
+					slug: "hi",
+					author: "me",
+					og_type: "poast",
+					createdAt: new Date(),
+					updatedAt: new Date(),
+					publishedAt: new Date()
+				},
+				table: 'articles'
+			} as UpdateEntityTestDatum<Article>,
+			{
+				titleEntityName: 'tag',
+				entityAttributes: {
+					name: "hi",
+					slug: "hi",
+				},
+				table: "tags"
+			} as UpdateEntityTestDatum<Tag>,
+			{
+				titleEntityName: 'collection',
+				entityAttributes: {
+					name: "Code",
+					slug: "code",
+				},
+				table: 'collections'
+			} as UpdateEntityTestDatum<Collection>,
+			{
+				titleEntityName: 'redirect',
+				entityAttributes: {
+					from: "/fotoblog/hi",
+					httpCode: 301
+				},
+				table: 'redirects'
+			} as UpdateEntityTestDatum<Redirect>
+		]
 
-			const hiArticleAttributes: ArticleAttributes = {
-				title: "hi",
-				body: "<article>hi</article>",
-				slug: "hi",
-				author: "me",
-				og_type: "poast",
-				createdAt: new Date(),
-				updatedAt: new Date(),
-				publishedAt: new Date()
-			}
+		updateEntityTestData.forEach(<T extends Entity>(testDatum: UpdateEntityTestDatum<T>) => {
+			it(`should update an existing ${testDatum.titleEntityName}`, async () => {
+				const id = 12345
 
-			const article: Article = {
-				id: id,
-				attributes: hiArticleAttributes,
-				meta: {}
-			}
+				const entity: T = {
+					id: id,
+					attributes: testDatum.entityAttributes,
+					meta: {}
+				} as T
 
-			const strapi = new Strapi({url: strapiUrl})
+				const strapi = new Strapi({url: strapiUrl})
 
-			stub(strapi, "update").withArgs('articles', id, hiArticleAttributes).resolves({
-				data: article,
-				meta: {}
+				stub(strapi, "update").withArgs(testDatum.table, id, testDatum.entityAttributes).resolves({
+					data: entity,
+					meta: {}
+				})
+
+				const strapiExporter = new StrapiExporter(strapi)
+
+				expect(await strapiExporter._updateEntity(testDatum.table)(entity)).to.eq(entity)
 			})
-
-			const strapiExporter = new StrapiExporter(strapi)
-
-			expect(await strapiExporter._updateArticle(article)).to.eq(article)
 		})
 	})
 
@@ -841,62 +897,6 @@ describe("StrapiExporter", () => {
 		})
 	})
 
-	describe("_updateTag", () => {
-		it("should update an existing tag", async () => {
-			const id = 12345
-
-			const hiTagAttributes: TagAttributes = {
-				name: "hi",
-				slug: "hi",
-			}
-
-			const tag: Tag = {
-				id: id,
-				attributes: hiTagAttributes,
-				meta: {}
-			}
-
-			const strapi = new Strapi({url: strapiUrl})
-
-			stub(strapi, "update").withArgs('tags', id, hiTagAttributes).resolves({
-				data: tag,
-				meta: {}
-			})
-
-			const strapiExporter = new StrapiExporter(strapi)
-
-			expect(await strapiExporter._updateTag(tag)).to.eq(tag)
-		})
-	})
-
-	describe("_updateCollection", () => {
-		it("should update an existing collection", async () => {
-			const id = 12345
-
-			const extantCollectionAttributes: CollectionAttributes = {
-				name: "Code",
-				slug: "code",
-			}
-
-			const collection: Collection = {
-				id: id,
-				attributes: extantCollectionAttributes,
-				meta: {}
-			}
-
-			const strapi = new Strapi({url: strapiUrl})
-
-			stub(strapi, "update").withArgs('collections', id, extantCollectionAttributes).resolves({
-				data: collection,
-				meta: {}
-			})
-
-			const strapiExporter = new StrapiExporter(strapi)
-
-			expect(await strapiExporter._updateCollection(collection)).to.eq(collection)
-		})
-	})
-
 	describe("_connectArticlesToCollections", () => {
 		it("should connect created articles to collections by putting articles' IDs into collections' articles field", () => {
 			const collectionSlug = "tag"
@@ -956,34 +956,6 @@ describe("StrapiExporter", () => {
 			expect(strapiExporter._connectArticlesToCollections(
 				collectionArticles, articles, collections
 			)).to.deep.eq(collectionsWithArticleIds)
-		})
-	})
-
-	describe("_updateRedirect", () => {
-		it("should update an existing redirect", async () => {
-			const id = 12345
-
-			const extantRedirectAttributes: RedirectAttributes = {
-				from: "/fotoblog/hi",
-				httpCode: 301
-			}
-
-			const redirect: Redirect = {
-				id: id,
-				attributes: extantRedirectAttributes,
-				meta: {}
-			}
-
-			const strapi = new Strapi({url: strapiUrl})
-
-			stub(strapi, "update").withArgs('redirects', id, extantRedirectAttributes).resolves({
-				data: redirect,
-				meta: {}
-			})
-
-			const strapiExporter = new StrapiExporter(strapi)
-
-			expect(await strapiExporter._updateRedirect(redirect)).to.eq(redirect)
 		})
 	})
 })

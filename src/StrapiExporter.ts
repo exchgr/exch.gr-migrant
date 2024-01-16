@@ -25,7 +25,7 @@ export class StrapiExporter {
 
 		const ensuredArticles = await promiseSequence([
 			...newArticles.map(this._createEntity('articles')),
-			...extantArticles.map(this._updateArticle),
+			...extantArticles.map(this._updateEntity('articles')),
 		])
 
 
@@ -66,11 +66,11 @@ export class StrapiExporter {
 			...ensuredArticles,
 			...await promiseSequence<Entity>([
 				...newTags.map(this._createEntity('tags')),
-				...extantTags.map(this._updateTag),
+				...extantTags.map(this._updateEntity('tags')),
 				...newCollections.map(this._createEntity('collections')),
-				...extantCollections.map(this._updateCollection),
+				...extantCollections.map(this._updateEntity('collections')),
 				...newRedirects.map(this._createEntity('redirects')),
-				...extantRedirects.map(this._updateRedirect)
+				...extantRedirects.map(this._updateEntity('redirects'))
 			])
 		]
 	}
@@ -109,8 +109,9 @@ export class StrapiExporter {
 		async(entity: T): Promise<T> =>
 			(await this.strapi.create<T>(table, entity.attributes)).data
 
-	_updateArticle = async (article: Article): Promise<Article> =>
-		(await this.strapi.update<Article>('articles', article.id!, article.attributes)).data
+	_updateEntity = <T extends Entity>(table: Table) =>
+		async (entity: T): Promise<T> =>
+			(await this.strapi.update<T>(table, entity.id!, entity.attributes)).data
 
 	_exists = (entity: Entity) => !!entity.id
 
@@ -124,12 +125,6 @@ export class StrapiExporter {
 				).map((article): number => article.id!)
 			}
 		}))
-
-	_updateTag = async (tag: Tag): Promise<Tag> =>
-		(await this.strapi.update<Tag>('tags', tag.id!, tag.attributes)).data
-
-	_updateCollection = async (collection: Collection): Promise<Collection> =>
-		(await this.strapi.update<Collection>('collections', collection.id!, collection.attributes)).data
 
 	_connectArticlesToCollections = (
 		collectionArticles: CollectionArticles,
@@ -145,7 +140,4 @@ export class StrapiExporter {
 				).map((article: Article) => article.id!)
 			}
 		}))
-
-	_updateRedirect = async (redirect: Redirect): Promise<Redirect> =>
-		(await this.strapi.update<Redirect>('redirects', redirect.id!, redirect.attributes)).data
 }
