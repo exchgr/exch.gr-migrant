@@ -24,7 +24,7 @@ export class StrapiExporter {
 		)
 
 		const ensuredArticles = await promiseSequence([
-			...newArticles.map(this._createArticle),
+			...newArticles.map(this._createEntity('articles')),
 			...extantArticles.map(this._updateArticle),
 		])
 
@@ -65,11 +65,11 @@ export class StrapiExporter {
 		return [
 			...ensuredArticles,
 			...await promiseSequence<Entity>([
-				...newTags.map(this._createTag),
+				...newTags.map(this._createEntity('tags')),
 				...extantTags.map(this._updateTag),
-				...newCollections.map(this._createCollection),
+				...newCollections.map(this._createEntity('collections')),
 				...extantCollections.map(this._updateCollection),
-				...newRedirects.map(this._createRedirect),
+				...newRedirects.map(this._createEntity('redirects')),
 				...extantRedirects.map(this._updateRedirect)
 			])
 		]
@@ -105,8 +105,9 @@ export class StrapiExporter {
 			}
 		}
 
-	_createArticle = async (article: Article): Promise<Article> =>
-		(await this.strapi.create<Article>('articles', article.attributes)).data
+	_createEntity = <T extends Entity>(table: Table) =>
+		async(entity: T): Promise<T> =>
+			(await this.strapi.create<T>(table, entity.attributes)).data
 
 	_updateArticle = async (article: Article): Promise<Article> =>
 		(await this.strapi.update<Article>('articles', article.id!, article.attributes)).data
@@ -124,14 +125,8 @@ export class StrapiExporter {
 			}
 		}))
 
-	_createTag = async (tag: Tag): Promise<Tag> =>
-		(await this.strapi.create<Tag>('tags', tag.attributes)).data
-
 	_updateTag = async (tag: Tag): Promise<Tag> =>
 		(await this.strapi.update<Tag>('tags', tag.id!, tag.attributes)).data
-
-	_createCollection = async (collection: Collection): Promise<Collection> =>
-		(await this.strapi.create<Collection>('collections', collection.attributes)).data
 
 	_updateCollection = async (collection: Collection): Promise<Collection> =>
 		(await this.strapi.update<Collection>('collections', collection.id!, collection.attributes)).data
@@ -150,9 +145,6 @@ export class StrapiExporter {
 				).map((article: Article) => article.id!)
 			}
 		}))
-
-	_createRedirect = async (redirect: Redirect): Promise<Redirect> =>
-		(await this.strapi.create<Redirect>('redirects', redirect.attributes)).data
 
 	_updateRedirect = async (redirect: Redirect): Promise<Redirect> =>
 		(await this.strapi.update<Redirect>('redirects', redirect.id!, redirect.attributes)).data
