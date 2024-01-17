@@ -4,8 +4,7 @@ import {Tag} from "types/Tag"
 import {DataContainer} from "types/DataContainer"
 import {DatumContainer} from "types/DatumContainer"
 import {Collection} from "types/Collection"
-import {CollectionArticles} from "types/CollectionArticles"
-import {TagArticles} from "types/TagArticles"
+import {Connection} from "types/Connection"
 import {Redirect} from "types/Redirect"
 
 export default class SquarespaceImporter {
@@ -103,21 +102,21 @@ export default class SquarespaceImporter {
 				seenCollectionSlugs.includes(collectionAttributes.slug) ? false : seenCollectionSlugs.push(collectionAttributes.slug)
 			),
 
-			tagArticles: datumContainers.reduce((tagArticles, datumContainer): TagArticles => {
+			tagArticles: datumContainers.reduce((tagArticles, datumContainer): Connection => {
 				datumContainer.tagAttributesCollection.forEach((tagAttributes) => {
 					tagArticles[tagAttributes.slug] ||= []
 					tagArticles[tagAttributes.slug].push(datumContainer.articleAttributes.slug)
 				})
 
 				return tagArticles
-			}, {} as TagArticles),
+			}, {} as Connection),
 
-			collectionArticles: datumContainers.reduce((collectionArticles, datumContainer): CollectionArticles => {
+			collectionArticles: datumContainers.reduce((collectionArticles, datumContainer): Connection => {
 				collectionArticles[datumContainer.collectionAttributes.slug] ||= []
 				collectionArticles[datumContainer.collectionAttributes.slug].push(datumContainer.articleAttributes.slug)
 
 				return collectionArticles
-			}, {} as CollectionArticles),
+			}, {} as Connection),
 
 			redirectAttributesCollection: datumContainers.map((datumContainer: DatumContainer) => (
 				datumContainer.redirectAttributes

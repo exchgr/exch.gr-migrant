@@ -12,8 +12,7 @@ import {StrapiExporter} from "../src/StrapiExporter"
 import {Tag} from "../src/types/Tag"
 import {DataContainer} from "../src/types/DataContainer"
 import {Collection} from "../src/types/Collection"
-import {CollectionArticles} from "../src/types/CollectionArticles"
-import {TagArticles} from "../src/types/TagArticles"
+import {Connection} from "../src/types/Connection"
 import {Redirect} from "../src/types/Redirect"
 import {Entity} from "../src/types/Entity"
 import {Table} from "../src/types/Table"
@@ -137,7 +136,7 @@ describe("StrapiExporter", () => {
 				...newTagEntityWithArticleIds
 			}
 
-			const tagArticles: TagArticles = {
+			const tagArticles: Connection = {
 				[extantTagSlug]: [extantArticleSlug, newArticleSlug],
 				[newTagSlug]: [newTagSlug]
 			}
@@ -188,7 +187,7 @@ describe("StrapiExporter", () => {
 				}
 			}
 
-			const collectionArticles: CollectionArticles = {
+			const collectionArticles: Connection = {
 				[newCollectionSlug]: [extantArticleSlug],
 				[extantCollectionSlug]: [newArticleSlug]
 			}
@@ -377,17 +376,18 @@ describe("StrapiExporter", () => {
 				.withArgs('collections').returns(createEntity)
 				.withArgs('redirects').returns(createEntity)
 
-			stub(strapiExporter, "_connectArticlesToTags").withArgs(
-				tagArticles,
-				match.array.deepEquals([createdNewArticleEntity, extantArticleEntity]),
-				[extantTagEntity, newTagEntity]
-			).returns([extantTagEntityWithArticleIds, newTagEntityWithArticleIds])
 
-			stub(strapiExporter, "_connectArticlesToCollections").withArgs(
-				collectionArticles,
-				match.array.deepEquals([createdNewArticleEntity, extantArticleEntity]),
-				[extantCollectionEntity, newCollectionEntity]
-			).returns([extantCollectionEntityWithArticleIds, newCollectionEntityWithArticleIds])
+			stub(strapiExporter, "_connectEntities")
+				.withArgs(
+					match(collectionArticles),
+					match.array.deepEquals([createdNewArticleEntity, extantArticleEntity]),
+					[extantCollectionEntity, newCollectionEntity]
+				).returns([extantCollectionEntityWithArticleIds, newCollectionEntityWithArticleIds])
+				.withArgs(
+					match(tagArticles),
+					match.array.deepEquals([createdNewArticleEntity, extantArticleEntity]),
+					[extantTagEntity, newTagEntity]
+				).returns([extantTagEntityWithArticleIds, newTagEntityWithArticleIds])
 
 			expect(await strapiExporter.export(dataContainer)).to.deep.eq([
 				createdNewArticleEntity,
@@ -834,13 +834,13 @@ describe("StrapiExporter", () => {
 		})
 	})
 
-	describe("_connectArticlesToTags", () => {
-		it("should connect created articles to tags by putting articles' IDs into tags' articles field", () => {
+	describe("_connectEntities", () => {
+		it("should connect two entities by putting A's IDs into B's As field", () => {
 			const tagSlug = "tag"
 			const articleSlug = "article"
 			const articleId = 1
 
-			const tagArticles: TagArticles = {
+			const tagArticles: Connection = {
 				[tagSlug]: [articleSlug]
 			}
 
@@ -889,7 +889,7 @@ describe("StrapiExporter", () => {
 
 			const strapiExporter = new StrapiExporter(strapi)
 
-			expect(strapiExporter._connectArticlesToTags(tagArticles, articles, tags)).to.deep.eq(tagsWithArticleIds)
+			expect(strapiExporter._connectEntities(tagArticles, articles, tags, "articles", "slug", "slug")).to.deep.eq(tagsWithArticleIds)
 		})
 	})
 
@@ -899,7 +899,7 @@ describe("StrapiExporter", () => {
 			const articleSlug = "article"
 			const articleId = 1
 
-			const collectionArticles: CollectionArticles = {
+			const collectionArticles: Connection = {
 				[collectionSlug]: [articleSlug]
 			}
 
@@ -949,8 +949,8 @@ describe("StrapiExporter", () => {
 
 			const strapiExporter = new StrapiExporter(strapi)
 
-			expect(strapiExporter._connectArticlesToCollections(
-				collectionArticles, articles, collections
+			expect(strapiExporter._connectEntities(
+				collectionArticles, articles, collections, "articles", "slug", "slug"
 			)).to.deep.eq(collectionsWithArticleIds)
 		})
 	})

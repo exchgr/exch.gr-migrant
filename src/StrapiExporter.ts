@@ -1,12 +1,7 @@
-import {Article} from "types/Article"
 import Strapi from "strapi-sdk-js"
 import {partition, promiseSequence} from "./lib/util"
-import {Tag} from "types/Tag"
 import {DataContainer} from "types/DataContainer"
-import {Collection} from "types/Collection"
-import {CollectionArticles} from "types/CollectionArticles"
-import {TagArticles} from "types/TagArticles"
-import {Redirect} from "types/Redirect"
+import {Connection} from "types/Connection"
 import {Entity} from "types/Entity"
 import {Table} from "types/Table"
 import {Attributes} from "types/Attributes"
@@ -34,27 +29,33 @@ export class StrapiExporter {
 
 
 		const [extantTags, newTags] = partition(
-			this._connectArticlesToTags(
+			this._connectEntities(
 				dataContainer.tagArticles,
 				ensuredArticles,
 				await Promise.all(
 					dataContainer.tagAttributesCollection.map(
 						this._findOrInitEntityByProperty('tags', 'slug')
 					)
-				)
+				),
+				"articles",
+				"slug",
+				"slug"
 			),
 			this._exists
 		)
 
 		const [extantCollections, newCollections] = partition(
-			this._connectArticlesToCollections(
+			this._connectEntities(
 				dataContainer.collectionArticles,
 				ensuredArticles,
 				await Promise.all(
 					dataContainer.collectionAttributesCollection.map(
 						this._findOrInitEntityByProperty('collections', 'slug')
 					)
-				)
+				),
+				"articles",
+				"slug",
+				"slug"
 			),
 			this._exists
 		)
@@ -119,28 +120,24 @@ export class StrapiExporter {
 
 	_exists = <T extends Attributes>(entity: Entity<T>) => !!entity.id
 
-	_connectArticlesToTags = (tagArticles: TagArticles, articles: Entity<Article>[], tags: Entity<Tag>[]): Entity<Tag>[] =>
-		tags.map((tag): Entity<Tag> => ({
-			...tag,
+	_connectEntities = <
+		T extends Attributes,
+		U extends Attributes
+	>(
+		collectionArticles: Connection,
+		tEntities: Entity<T>[],
+		uEntities: Entity<U>[],
+		connectionField: keyof U,
+		tConnectionKey: keyof T,
+		uConnectionKey: keyof U,
+	): Entity<U>[] =>
+		uEntities.map((uEntity) => ({
+			...uEntity,
 			attributes: {
-				...tag.attributes,
-				articles: articles.filter((article) =>
-					tagArticles[tag.attributes.slug].includes(article.attributes.slug)
-				).map((article): number => article.id!)
-			}
-		}))
-
-	_connectArticlesToCollections = (
-		collectionArticles: CollectionArticles,
-		articles: Entity<Article>[],
-		collections: Entity<Collection>[]
-	): Entity<Collection>[] =>
-		collections.map((collection) => ({
-			...collection,
-			attributes: {
-				...collection.attributes,
-				articles: articles.filter((article) =>
-					collectionArticles[collection.attributes.slug].includes(article.attributes.slug )
+				...uEntity.attributes,
+				[connectionField]: tEntities.filter((tEntity) =>
+					collectionArticles[uEntity.attributes[uConnectionKey] as string]
+						.includes(tEntity.attributes[tConnectionKey] as string)
 				).map((article) => article.id!)
 			}
 		}))

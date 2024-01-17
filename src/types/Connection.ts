@@ -1,3 +1,3 @@
-export type CollectionArticles = {
+export type Connection = {
 	[collectionSlug: string]: string[]
 }

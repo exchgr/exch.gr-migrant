@@ -1,15 +1,14 @@
 import {Article} from "types/Article"
 import {Tag} from "types/Tag"
 import {Collection} from "types/Collection"
-import {CollectionArticles} from "types/CollectionArticles"
-import {TagArticles} from "types/TagArticles"
+import {Connection} from "types/Connection"
 import {Redirect} from "types/Redirect"
 
 export type DataContainer = {
 	articleAttributesCollection: Article[]
 	tagAttributesCollection: Tag[]
-	tagArticles: TagArticles
+	tagArticles: Connection
 	collectionAttributesCollection: Collection[]
-	collectionArticles: CollectionArticles
+	collectionArticles: Connection
 	redirectAttributesCollection: Redirect[]
 }
