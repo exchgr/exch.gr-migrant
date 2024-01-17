@@ -7,57 +7,54 @@ import {match, stub} from "sinon"
 import chai, {expect} from "chai"
 import sinonChai from "sinon-chai"
 import chaiAsPromised from "chai-as-promised"
-import {ArticleAttributes} from "../src/types/ArticleAttributes"
-import {StrapiExporter} from "../src/StrapiExporter"
 import {Article} from "../src/types/Article"
-import {TagAttributes} from "../src/types/TagAttributes"
+import {StrapiExporter} from "../src/StrapiExporter"
 import {Tag} from "../src/types/Tag"
 import {DataContainer} from "../src/types/DataContainer"
-import {CollectionAttributes} from "../src/types/CollectionAttributes"
 import {Collection} from "../src/types/Collection"
 import {CollectionArticles} from "../src/types/CollectionArticles"
 import {TagArticles} from "../src/types/TagArticles"
-import {RedirectAttributes} from "../src/types/RedirectAttributes"
 import {Redirect} from "../src/types/Redirect"
 import {Entity} from "../src/types/Entity"
 import {Table} from "../src/types/Table"
+import {Attributes} from "../src/types/Attributes"
 
 chai.use(sinonChai)
 chai.use(chaiAsPromised)
 
-type FindOrInitEntityByPropertyExtantTestDatum<T extends Entity> = {
+type FindOrInitEntityByPropertyExtantTestDatum<T extends Attributes> = {
 	titleEntityName: string,
 	id: 12345,
-	propertyName: keyof T["attributes"]
+	propertyName: keyof T
 	propertyValue: string
-	entityAttributes: T["attributes"]
+	entityAttributes: T
 	table: Table
 }
 
-type FindOrInitEntityByPropertyNewTestDatum<T extends Entity> = {
+type FindOrInitEntityByPropertyNewTestDatum<T extends Attributes> = {
 	titleEntityName: string,
-	propertyName: keyof T["attributes"]
+	propertyName: keyof T
 	propertyValue: string
-	entityAttributes: T["attributes"]
+	entityAttributes: T
 	table: Table
 }
 
-type FindOrInitEntityByPropertyErrorTestDatum<T extends Entity> = {
-	propertyName: keyof T["attributes"]
+type FindOrInitEntityByPropertyErrorTestDatum<T extends Attributes> = {
+	propertyName: keyof T
 	propertyValue: string
-	entityAttributes: T["attributes"]
+	entityAttributes: T
 	table: Table
 }
 
-type CreateEntityTestDatum<T extends Entity> = {
+type CreateEntityTestDatum<T extends Attributes> = {
 	titleEntityName: string
-	entityAttributes: T["attributes"]
+	entityAttributes: T
 	table: Table
 }
 
-type UpdateEntityTestDatum<T extends Entity> = {
+type UpdateEntityTestDatum<T extends Attributes> = {
 	titleEntityName: string
-	entityAttributes: T["attributes"]
+	entityAttributes: T
 	table: Table
 }
 
@@ -72,7 +69,7 @@ describe("StrapiExporter", () => {
 			const extantArticleId = 12345
 			const newArticleId = 12346
 
-			const extantArticleAttributes: ArticleAttributes = {
+			const extantArticle: Article = {
 				title: "hi",
 				body: "<article>hi</article>",
 				slug: extantArticleSlug,
@@ -83,7 +80,7 @@ describe("StrapiExporter", () => {
 				publishedAt: new Date()
 			}
 
-			const newArticleAttributes: ArticleAttributes = {
+			const newArticle: Article = {
 				title: "hey",
 				body: "<article>hey</article>",
 				slug: newArticleSlug,
@@ -96,48 +93,48 @@ describe("StrapiExporter", () => {
 
 			const extantTagSlug = "greetings"
 
-			const extantTagAttributes: TagAttributes = {
+			const extantTag: Tag = {
 				name: "Greetings",
 				slug: extantTagSlug
 			}
 
-			const extantTag: Tag = {
+			const extantTagEntity: Entity<Tag> = {
 				id: 1,
-				attributes: extantTagAttributes,
+				attributes: extantTag,
 				meta: {}
 			}
 
-			const extantTagWithArticleIds: Tag = {
-				...extantTag,
+			const extantTagEntityWithArticleIds: Entity<Tag> = {
+				...extantTagEntity,
 				attributes: {
 					articles: [extantArticleId, newArticleId],
-					...extantTagAttributes
+					...extantTag
 				},
 			}
 
 			const newTagSlug = "casual-greetings"
 
-			const newTagAttributes: TagAttributes = {
+			const newTag: Tag = {
 				name: "Casual greetings",
 				slug: newTagSlug
 			}
 
-			const newTag: Tag = {
-				attributes: newTagAttributes,
+			const newTagEntity: Entity<Tag> = {
+				attributes: newTag,
 				meta: {}
 			}
 
-			const newTagWithArticleIds: Tag = {
-				...newTag,
+			const newTagEntityWithArticleIds: Entity<Tag> = {
+				...newTagEntity,
 				attributes: {
 					articles: [newArticleId],
-					...newTagAttributes
+					...newTag
 				},
 			}
 
-			const createdNewTagWithArticleIds: Tag = {
+			const createdNewTagEntityWithArticleIds: Entity<Tag> = {
 				id: 2,
-				...newTagWithArticleIds
+				...newTagEntityWithArticleIds
 			}
 
 			const tagArticles: TagArticles = {
@@ -147,46 +144,46 @@ describe("StrapiExporter", () => {
 
 			const newCollectionSlug = "photography"
 
-			const newCollectionAttributes: CollectionAttributes = {
+			const newCollection: Collection = {
 				name: "Photography",
 				slug: newCollectionSlug
 			}
 
-			const newCollection: Collection = {
-				attributes: newCollectionAttributes,
+			const newCollectionEntity: Entity<Collection> = {
+				attributes: newCollection,
 				meta: {}
 			}
 
-			const newCollectionWithArticleIds: Collection = {
-				...newCollection,
+			const newCollectionEntityWithArticleIds: Entity<Collection> = {
+				...newCollectionEntity,
 				attributes: {
-					...newCollectionAttributes,
+					...newCollection,
 					articles: [extantArticleId]
 				}
 			}
 
-			const createdNewCollectionWithArticleIds: Collection = {
+			const createdNewCollectionEntityWithArticleIds: Entity<Collection> = {
 				id: 2,
-				...newCollectionWithArticleIds
+				...newCollectionEntityWithArticleIds
 			}
 
 			const extantCollectionSlug = "code"
 
-			const extantCollectionAttributes: CollectionAttributes = {
+			const extantCollection: Collection = {
 				name: "Code",
 				slug: extantCollectionSlug
 			}
 
-			const extantCollection: Collection = {
+			const extantCollectionEntity: Entity<Collection> = {
 				id: 1,
-				attributes: extantCollectionAttributes,
+				attributes: extantCollection,
 				meta: {}
 			}
 
-			const extantCollectionWithArticleIds: Collection = {
-				...extantCollection,
+			const extantCollectionEntityWithArticleIds: Entity<Collection> = {
+				...extantCollectionEntity,
 				attributes: {
-					...extantCollectionAttributes,
+					...extantCollection,
 					articles: [newArticleId]
 				}
 			}
@@ -196,83 +193,83 @@ describe("StrapiExporter", () => {
 				[extantCollectionSlug]: [newArticleSlug]
 			}
 
-			const newRedirectAttributes: RedirectAttributes = {
+			const newRedirect: Redirect = {
 				from: `/fotoblog/${extantArticleSlug}`,
 				httpCode: 301
 			}
 
-			const newRedirect: Redirect = {
-				attributes: newRedirectAttributes,
+			const newRedirectEntity: Entity<Redirect> = {
+				attributes: newRedirect,
 				meta: {}
 			}
 
-			const newRedirectWithArticleId: Redirect = {
-				...newRedirect,
+			const newRedirectEntityWithArticleId: Entity<Redirect> = {
+				...newRedirectEntity,
 				attributes: {
-					...newRedirectAttributes,
+					...newRedirect,
 					to: extantArticleId
 				}
 			}
 
-			const createdNewRedirectWithArticleId: Redirect = {
+			const createdNewRedirectEntityWithArticleId: Entity<Redirect> = {
 				id: 2,
-				...newRedirectWithArticleId,
+				...newRedirectEntityWithArticleId,
 			}
 
-			const extantRedirectAttributes: RedirectAttributes = {
+			const extantRedirect: Redirect = {
 				from: `/fotoblog/${newArticleSlug}`,
 				httpCode: 301
 			}
 
-			const extantRedirect: Redirect = {
+			const extantRedirectEntity: Entity<Redirect> = {
 				id: 1,
-				attributes: extantRedirectAttributes,
+				attributes: extantRedirect,
 				meta: {}
 			}
 
-			const extantRedirectWithArticleId: Redirect = {
-				...extantRedirect,
+			const extantRedirectEntityWithArticleId: Entity<Redirect> = {
+				...extantRedirectEntity,
 				attributes: {
-					...extantRedirectAttributes,
+					...extantRedirect,
 					to: newArticleId
 				}
 			}
 
 			const dataContainer: DataContainer = {
 				articleAttributesCollection: [
-					extantArticleAttributes,
-					newArticleAttributes
+					extantArticle,
+					newArticle
 				],
 				tagAttributesCollection: [
-					extantTagAttributes,
-					newTagAttributes,
+					extantTag,
+					newTag,
 				],
 				tagArticles,
 				collectionAttributesCollection: [
-					extantCollectionAttributes,
-					newCollectionAttributes
+					extantCollection,
+					newCollection
 				],
 				collectionArticles,
 				redirectAttributesCollection: [
-					newRedirectAttributes,
-					extantRedirectAttributes
+					newRedirect,
+					extantRedirect
 				]
 			}
 
-			const extantArticle: Article = {
+			const extantArticleEntity: Entity<Article> = {
 				id: extantArticleId,
-				attributes: extantArticleAttributes,
+				attributes: extantArticle,
 				meta: {}
 			}
 
-			const newArticle: Article = {
-				attributes: newArticleAttributes,
+			const newArticleEntity: Entity<Article> = {
+				attributes: newArticle,
 				meta: {}
 			}
 
-			const createdNewArticle: Article = {
+			const createdNewArticleEntity: Entity<Article> = {
 				id: newArticleId,
-				attributes: newArticleAttributes,
+				attributes: newArticle,
 				meta: {}
 			}
 
@@ -280,71 +277,70 @@ describe("StrapiExporter", () => {
 
 			const strapiExporter = new StrapiExporter(strapi)
 
-			const findOrInitEntity: <T extends Entity>(entityAttributes: T["attributes"]) => Promise<T> = async <T extends Entity>(entityAttributes: T["attributes"]): Promise<T> => {
+			const findOrInitEntityByProperty = async <T extends Attributes>(entityAttributes: T): Promise<Entity<T>> => {
 				switch (entityAttributes) {
-					case extantArticleAttributes: {
-						return extantArticle as T
+					case extantArticle: {
+						return extantArticleEntity as Entity<T>
 					}
-					case newArticleAttributes: {
-						return newArticle as T
+					case newArticle: {
+						return newArticleEntity as Entity<T>
 					}
-					case extantTagAttributes: {
-						return extantTag as T
+					case extantTag: {
+						return extantTagEntity as Entity<T>
 					}
-					case newTagAttributes: {
-						return newTag as T
+					case newTag: {
+						return newTagEntity as Entity<T>
 					}
-					case newCollectionAttributes: {
-						return newCollection as T
+					case newCollection: {
+						return newCollectionEntity as Entity<T>
 					}
-					case extantCollectionAttributes: {
-						return extantCollection as T
+					case extantCollection: {
+						return extantCollectionEntity as Entity<T>
 					}
-					case newRedirectAttributes: {
-						return newRedirect as T
+					case newRedirect: {
+						return newRedirectEntity as Entity<T>
 					}
-					case extantRedirectAttributes: {
-						return extantRedirect as T
+					case extantRedirect: {
+						return extantRedirectEntity as Entity<T>
 					}
 					default: {
-						return {} as T
+						return {} as Entity<T>
 					}
 				}
 			}
 
-
 			stub(strapiExporter, "_findOrInitEntityByProperty")
-				.withArgs('articles', match('slug')).returns(findOrInitEntity)
-				.withArgs('tags', match('slug')).returns(findOrInitEntity)
-				.withArgs('collections', match('slug')).returns(findOrInitEntity)
-				.withArgs('redirects', match('from')).returns(findOrInitEntity)
+				.withArgs('articles', match('slug')).returns(findOrInitEntityByProperty)
+				.withArgs('tags', match('slug')).returns(findOrInitEntityByProperty)
+				.withArgs('collections', match('slug')).returns(findOrInitEntityByProperty)
+				.withArgs('redirects', match('from')).returns(findOrInitEntityByProperty)
 
 			stub(strapiExporter, "_exists")
-				.withArgs(extantArticle).returns(true)
-				.withArgs(newArticle).returns(false)
-				.withArgs(extantTagWithArticleIds).returns(true)
-				.withArgs(newTagWithArticleIds).returns(false)
-				.withArgs(extantCollectionWithArticleIds).returns(true)
-				.withArgs(newCollectionWithArticleIds).returns(false)
-				.withArgs(extantRedirect).returns(true)
-				.withArgs(newRedirect).returns(false)
+				.withArgs(extantArticleEntity).returns(true)
+				.withArgs(newArticleEntity).returns(false)
+				.withArgs(extantTagEntityWithArticleIds).returns(true)
+				.withArgs(newTagEntityWithArticleIds).returns(false)
+				.withArgs(extantCollectionEntityWithArticleIds).returns(true)
+				.withArgs(newCollectionEntityWithArticleIds).returns(false)
+				.withArgs(extantRedirectEntity).returns(true)
+				.withArgs(newRedirectEntity).returns(false)
 
-			const updateEntity = async <T extends Entity>(entity: T): Promise<T> => {
+			const updateEntity = async <T extends Attributes>(entity: Entity<T>): Promise<Entity<T>> => {
 				switch(entity) {
-					case extantArticle: {
-						return extantArticle as T
+					case extantArticleEntity: {
+						return extantArticleEntity as Entity<T>
 					}
-					case extantTagWithArticleIds: {
-						return extantTagWithArticleIds as T
+					case extantTagEntityWithArticleIds: {
+						return extantTagEntityWithArticleIds as Entity<T>
 					}
-					case extantCollectionWithArticleIds: {
-						return extantCollectionWithArticleIds as T
+					case extantCollectionEntityWithArticleIds: {
+						return extantCollectionEntityWithArticleIds as Entity<T>
 					}
-					case extantRedirect: {
-						return extantRedirectWithArticleId as T
+					case extantRedirectEntity: {
+						return extantRedirectEntityWithArticleId as Entity<T>
 					}
 					default: {
-						return {} as T
+						return {} as Entity<T>
 					}
 				}
 			}
@@ -355,22 +351,22 @@ describe("StrapiExporter", () => {
 				.withArgs('collections').returns(updateEntity)
 				.withArgs('redirects').returns(updateEntity)
 
-			const createEntity = async <T extends Entity>(entity: T): Promise<T> => {
+			const createEntity = async <T extends Attributes>(entity: Entity<T>): Promise<Entity<T>> => {
 				switch (entity) {
-					case newArticle: {
-						return createdNewArticle as T
+					case newArticleEntity: {
+						return createdNewArticleEntity as Entity<T>
 					}
-					case newTagWithArticleIds: {
-						return createdNewTagWithArticleIds as T
+					case newTagEntityWithArticleIds: {
+						return createdNewTagEntityWithArticleIds as Entity<T>
 					}
-					case newCollectionWithArticleIds: {
-						return createdNewCollectionWithArticleIds as T
+					case newCollectionEntityWithArticleIds: {
+						return createdNewCollectionEntityWithArticleIds as Entity<T>
 					}
-					case newRedirect: {
-						return createdNewRedirectWithArticleId as T
+					case newRedirectEntity: {
+						return createdNewRedirectEntityWithArticleId as Entity<T>
 					}
 					default: {
-						return {} as T
+						return {} as Entity<T>
 					}
 				}
 			}
@@ -383,25 +379,25 @@ describe("StrapiExporter", () => {
 
 			stub(strapiExporter, "_connectArticlesToTags").withArgs(
 				tagArticles,
-				match.array.deepEquals([createdNewArticle, extantArticle]),
-				[extantTag, newTag]
-			).returns([extantTagWithArticleIds, newTagWithArticleIds])
+				match.array.deepEquals([createdNewArticleEntity, extantArticleEntity]),
+				[extantTagEntity, newTagEntity]
+			).returns([extantTagEntityWithArticleIds, newTagEntityWithArticleIds])
 
 			stub(strapiExporter, "_connectArticlesToCollections").withArgs(
 				collectionArticles,
-				match.array.deepEquals([createdNewArticle, extantArticle]),
-				[extantCollection, newCollection]
-			).returns([extantCollectionWithArticleIds, newCollectionWithArticleIds])
+				match.array.deepEquals([createdNewArticleEntity, extantArticleEntity]),
+				[extantCollectionEntity, newCollectionEntity]
+			).returns([extantCollectionEntityWithArticleIds, newCollectionEntityWithArticleIds])
 
 			expect(await strapiExporter.export(dataContainer)).to.deep.eq([
-				createdNewArticle,
-				extantArticle,
-				createdNewTagWithArticleIds,
-				extantTagWithArticleIds,
-				createdNewCollectionWithArticleIds,
-				extantCollectionWithArticleIds,
-				createdNewRedirectWithArticleId,
-				extantRedirectWithArticleId
+				createdNewArticleEntity,
+				extantArticleEntity,
+				createdNewTagEntityWithArticleIds,
+				extantTagEntityWithArticleIds,
+				createdNewCollectionEntityWithArticleIds,
+				extantCollectionEntityWithArticleIds,
+				createdNewRedirectEntityWithArticleId,
+				extantRedirectEntityWithArticleId
 			])
 		})
 	})
@@ -462,7 +458,7 @@ describe("StrapiExporter", () => {
 			} as FindOrInitEntityByPropertyExtantTestDatum<Redirect>
 		]
 
-		findOrInitEntityByPropertyExtantTestData.forEach(<T extends Entity>(testDatum: FindOrInitEntityByPropertyExtantTestDatum<T>) => {
+		findOrInitEntityByPropertyExtantTestData.forEach(<T extends Attributes>(testDatum: FindOrInitEntityByPropertyExtantTestDatum<T>) => {
 			it(`should return an existing ${testDatum.titleEntityName}, updated with incoming ${testDatum.titleEntityName}Attributes data`, async () => {
 				const queryParams: StrapiRequestParams = {
 					filters: {
@@ -472,11 +468,11 @@ describe("StrapiExporter", () => {
 					}
 				}
 
-				const entity: T = {
+				const entity: Entity<T> = {
 					id: testDatum.id,
 					attributes: testDatum.entityAttributes,
 					meta: {}
-				} as T
+				} as Entity<T>
 
 				const strapi = new Strapi({ url: strapiUrl })
 
@@ -485,11 +481,11 @@ describe("StrapiExporter", () => {
 						id: testDatum.id,
 						attributes: {
 							[testDatum.propertyName]: testDatum.propertyValue
-						} as unknown as T["attributes"],
+						} as unknown as T,
 						meta: {}
 					}],
 					meta: {}
-				} as StrapiResponse<T[]>)
+				} as StrapiResponse<Entity<T>[]>)
 
 				const strapiExporter = new StrapiExporter(strapi)
 
@@ -546,7 +542,7 @@ describe("StrapiExporter", () => {
 			} as FindOrInitEntityByPropertyNewTestDatum<Redirect>
 		]
 
-		findOrInitEntityByPropertyNewTestData.forEach(<T extends Entity>(testDatum: FindOrInitEntityByPropertyNewTestDatum<T>) => {
+		findOrInitEntityByPropertyNewTestData.forEach(<T extends Attributes>(testDatum: FindOrInitEntityByPropertyNewTestDatum<T>) => {
 			it(`should return a new ${testDatum.titleEntityName} if one doesn't exist`, async () => {
 				const queryParams: StrapiRequestParams = {
 					filters: {
@@ -556,11 +552,11 @@ describe("StrapiExporter", () => {
 					}
 				}
 
-				const entity: T = {
+				const entity: Entity<T> = {
 					id: undefined,
 					attributes: testDatum.entityAttributes,
 					meta: {}
-				} as T
+				} as Entity<T>
 
 				const strapi = new Strapi({ url: strapiUrl })
 
@@ -625,7 +621,7 @@ describe("StrapiExporter", () => {
 			} as FindOrInitEntityByPropertyErrorTestDatum<Redirect>
 		]
 
-		findOrInitEntityByPropertyErrorTestData.forEach(<T extends Entity>(testDatum: FindOrInitEntityByPropertyErrorTestDatum<T>) => {
+		findOrInitEntityByPropertyErrorTestData.forEach(<T extends Attributes>(testDatum: FindOrInitEntityByPropertyErrorTestDatum<T>) => {
 			it("should rethrow all other errors", async () => {
 				const heyQueryParams: StrapiRequestParams = {
 					filters: {
@@ -657,7 +653,7 @@ describe("StrapiExporter", () => {
 	})
 
 	describe("_createEntity", () => {
-		const createEntityTestData: CreateEntityTestDatum<Entity>[] = [
+		const createEntityTestData: CreateEntityTestDatum<any>[] = [
 			{
 				titleEntityName: 'article',
 				entityAttributes: {
@@ -698,13 +694,13 @@ describe("StrapiExporter", () => {
 			} as CreateEntityTestDatum<Redirect>
 		]
 
-		createEntityTestData.forEach(<T extends Entity>(testDatum: CreateEntityTestDatum<T>) => {
+		createEntityTestData.forEach(<T extends Attributes>(testDatum: CreateEntityTestDatum<T>) => {
 			it(`should create a new ${testDatum.titleEntityName}`, async () => {
-				const newEntity: T = {
+				const newEntity: Entity<T> = {
 					id: undefined,
 					attributes: testDatum.entityAttributes,
 					meta: {}
-				} as T
+				}
 
 				const strapi = new Strapi({ url: strapiUrl })
 
@@ -726,7 +722,7 @@ describe("StrapiExporter", () => {
 	})
 
 	describe("_updateEntity", () => {
-		const updateEntityTestData: UpdateEntityTestDatum<Entity>[] = [
+		const updateEntityTestData: UpdateEntityTestDatum<any>[] = [
 			{
 				titleEntityName: "article",
 				entityAttributes: {
@@ -738,44 +734,44 @@ describe("StrapiExporter", () => {
 					createdAt: new Date(),
 					updatedAt: new Date(),
 					publishedAt: new Date()
-				},
+				} as Article,
 				table: 'articles'
-			} as UpdateEntityTestDatum<Article>,
+			},
 			{
 				titleEntityName: 'tag',
 				entityAttributes: {
 					name: "hi",
 					slug: "hi",
-				},
+				} as Tag,
 				table: "tags"
-			} as UpdateEntityTestDatum<Tag>,
+			},
 			{
 				titleEntityName: 'collection',
 				entityAttributes: {
 					name: "Code",
 					slug: "code",
-				},
+				} as Collection,
 				table: 'collections'
-			} as UpdateEntityTestDatum<Collection>,
+			},
 			{
 				titleEntityName: 'redirect',
 				entityAttributes: {
 					from: "/fotoblog/hi",
 					httpCode: 301
-				},
+				} as Redirect,
 				table: 'redirects'
-			} as UpdateEntityTestDatum<Redirect>
+			}
 		]
 
-		updateEntityTestData.forEach(<T extends Entity>(testDatum: UpdateEntityTestDatum<T>) => {
+		updateEntityTestData.forEach(<T extends Attributes>(testDatum: UpdateEntityTestDatum<T>) => {
 			it(`should update an existing ${testDatum.titleEntityName}`, async () => {
 				const id = 12345
 
-				const entity: T = {
+				const entity: Entity<T> = {
 					id: id,
 					attributes: testDatum.entityAttributes,
 					meta: {}
-				} as T
+				} as Entity<T>
 
 				const strapi = new Strapi({url: strapiUrl})
 
@@ -793,7 +789,7 @@ describe("StrapiExporter", () => {
 
 	describe("_exists", () => {
 		it("should return true if article has an id", () => {
-			const article: Article = {
+			const article: Entity<Article> = {
 				id: 12345,
 				attributes: {
 					title: "hi",
@@ -816,7 +812,7 @@ describe("StrapiExporter", () => {
 		})
 
 		it("should return false if article has no id", () => {
-			const article: Article = {
+			const article: Entity<Article> = {
 				attributes: {
 					title: "hey",
 					body: "<article>hey</article>",
@@ -850,7 +846,7 @@ describe("StrapiExporter", () => {
 
 			const now = new Date()
 
-			const articles: Article[] = [
+			const articles: Entity<Article>[] = [
 				{
 					id: articleId,
 					attributes: {
@@ -867,19 +863,19 @@ describe("StrapiExporter", () => {
 				}
 			]
 
-			const tagAttributes = {
+			const tagAttributes: Tag = {
 				name: "Tag",
 				slug: tagSlug
 			}
 
-			const tag = {
+			const tag: Entity<Tag> = {
 				attributes: tagAttributes,
 				meta: {}
 			}
 
-			const tags: Tag[] = [tag]
+			const tags: Entity<Tag>[] = [tag]
 
-			const tagsWithArticleIds: Tag[] = [
+			const tagsWithArticleIds: Entity<Tag>[] = [
 				{
 					...tag,
 					attributes: {
@@ -910,7 +906,7 @@ describe("StrapiExporter", () => {
 
 			const now = new Date()
 
-			const articles: Article[] = [
+			const articles: Entity<Article>[] = [
 				{
 					id: articleId,
 					attributes: {
@@ -927,19 +923,19 @@ describe("StrapiExporter", () => {
 				}
 			]
 
-			const collectionAttributes: CollectionAttributes = {
+			const collectionAttributes: Collection = {
 				name: "Tag",
 				slug: collectionSlug
 			}
 
-			const collection: Collection = {
+			const collection: Entity<Collection> = {
 				attributes: collectionAttributes,
 				meta: {}
 			}
 
-			const collections: Collection[] = [collection]
+			const collections: Entity<Collection>[] = [collection]
 
-			const collectionsWithArticleIds: Collection[] = [
+			const collectionsWithArticleIds: Entity<Collection>[] = [
 				{
 					...collection,
 					attributes: {

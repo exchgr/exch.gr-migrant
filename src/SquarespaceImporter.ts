@@ -1,12 +1,12 @@
 import {JSDOM} from "jsdom"
-import {ArticleAttributes} from "types/ArticleAttributes"
-import {TagAttributes} from "types/TagAttributes"
+import {Article} from "types/Article"
+import {Tag} from "types/Tag"
 import {DataContainer} from "types/DataContainer"
 import {DatumContainer} from "types/DatumContainer"
-import {CollectionAttributes} from "types/CollectionAttributes"
+import {Collection} from "types/Collection"
 import {CollectionArticles} from "types/CollectionArticles"
 import {TagArticles} from "types/TagArticles"
-import {RedirectAttributes} from "types/RedirectAttributes"
+import {Redirect} from "types/Redirect"
 
 export default class SquarespaceImporter {
 	import = (squarespaceData: string): DataContainer =>
@@ -33,7 +33,7 @@ export default class SquarespaceImporter {
 	_isPublished = (item: Element) =>
 		item.querySelector("wp\\:status")?.textContent == "publish"
 
-	_convertToArticleAttributes = (item: Element): ArticleAttributes => {
+	_convertToArticleAttributes = (item: Element): Article => {
 		const pubDate = new Date(item.querySelector("pubDate")!.textContent!);
 
 		return {
@@ -51,14 +51,14 @@ export default class SquarespaceImporter {
 	_extractCategories = (item: Element): Element[] =>
 		Array.from(item.querySelectorAll('category[domain="post_tag"]'))
 
-	_convertToTagAttributes = (category: Element): TagAttributes => ({
+	_convertToTagAttributes = (category: Element): Tag => ({
 		name: Array.from(category.childNodes)[0].textContent!,
 		slug: Array.from(category.attributes).filter((attribute) =>
 			attribute.name == "nicename"
 		)[0].value
 	})
 
-	_extractRedirectAttributes = (item: Element): RedirectAttributes => ({
+	_extractRedirectAttributes = (item: Element): Redirect => ({
 		from: item.querySelector("link")!.textContent!,
 		httpCode: 301
 	})
@@ -99,7 +99,7 @@ export default class SquarespaceImporter {
 
 			collectionAttributesCollection: datumContainers.map((datumContainer) =>
 				datumContainer.collectionAttributes
-			).filter((collectionAttributes: CollectionAttributes) =>
+			).filter((collectionAttributes: Collection) =>
 				seenCollectionSlugs.includes(collectionAttributes.slug) ? false : seenCollectionSlugs.push(collectionAttributes.slug)
 			),
 

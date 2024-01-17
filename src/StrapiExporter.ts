@@ -9,6 +9,7 @@ import {TagArticles} from "types/TagArticles"
 import {Redirect} from "types/Redirect"
 import {Entity} from "types/Entity"
 import {Table} from "types/Table"
+import {Attributes} from "types/Attributes"
 
 export class StrapiExporter {
 	private strapi: Strapi
@@ -17,9 +18,12 @@ export class StrapiExporter {
 		this.strapi = strapi
 	}
 
-	export = async (dataContainer: DataContainer): Promise<(Entity)[]> => {
-		const [extantArticles, newArticles]: Article[][] = partition(
-			await Promise.all(dataContainer.articleAttributesCollection.map(this._findOrInitEntityByProperty<Article>('articles', 'slug'))),
+	export = async (dataContainer: DataContainer): Promise<Entity<Attributes>[]> => {
+		const array = await Promise.all(dataContainer.articleAttributesCollection.map(
+			this._findOrInitEntityByProperty('articles', 'slug')
+		))
+		const [extantArticles, newArticles] = partition(
+			array,
 			this._exists
 		)
 
@@ -29,42 +33,42 @@ export class StrapiExporter {
 		])
 
 
-		const [extantTags, newTags]: Tag[][] = partition(
+		const [extantTags, newTags] = partition(
 			this._connectArticlesToTags(
 				dataContainer.tagArticles,
 				ensuredArticles,
 				await Promise.all(
 					dataContainer.tagAttributesCollection.map(
-						this._findOrInitEntityByProperty<Tag>('tags', 'slug')
+						this._findOrInitEntityByProperty('tags', 'slug')
 					)
 				)
 			),
 			this._exists
 		)
 
-		const [extantCollections, newCollections]: Collection[][] = partition(
+		const [extantCollections, newCollections] = partition(
 			this._connectArticlesToCollections(
 				dataContainer.collectionArticles,
 				ensuredArticles,
 				await Promise.all(
 					dataContainer.collectionAttributesCollection.map(
-						this._findOrInitEntityByProperty<Collection>('collections', 'slug')
+						this._findOrInitEntityByProperty('collections', 'slug')
 					)
 				)
 			),
 			this._exists
 		)
 
-		const [extantRedirects, newRedirects]: Redirect[][] = partition(
+		const [extantRedirects, newRedirects] = partition(
 			await Promise.all(
-				dataContainer.redirectAttributesCollection.map(this._findOrInitEntityByProperty<Redirect>('redirects', 'from'))
+				dataContainer.redirectAttributesCollection.map(this._findOrInitEntityByProperty('redirects', 'from'))
 			),
 			this._exists
 		)
 
 		return [
 			...ensuredArticles,
-			...await promiseSequence<Entity>([
+			...await promiseSequence<Entity<Attributes>>([
 				...newTags.map(this._createEntity('tags')),
 				...extantTags.map(this._updateEntity('tags')),
 				...newCollections.map(this._createEntity('collections')),
@@ -75,13 +79,13 @@ export class StrapiExporter {
 		]
 	}
 
-	_findOrInitEntityByProperty = <T extends Entity>(
+	_findOrInitEntityByProperty = <T extends Attributes>(
 		table: Table,
-		property: keyof T["attributes"]
-	): (entityAttributes: T["attributes"]) => Promise<T> =>
-		async (entityAttributes: T["attributes"]): Promise<T> => {
+		property: keyof T
+	) =>
+		async (entityAttributes: T): Promise<Entity<T>> => {
 			try {
-				const entity: T = (await this.strapi.find<T[]>(table, {
+				const entity = (await this.strapi.find<Entity<T>[]>(table, {
 					filters: {
 						[property]: {
 							$eq: entityAttributes[property]
@@ -101,22 +105,22 @@ export class StrapiExporter {
 					id: undefined,
 					attributes: entityAttributes,
 					meta: {}
-				} as T
+				}
 			}
 		}
 
-	_createEntity = <T extends Entity>(table: Table) =>
-		async(entity: T): Promise<T> =>
-			(await this.strapi.create<T>(table, entity.attributes)).data
+	_createEntity = <T extends Attributes>(table: Table) =>
+		async(entity: Entity<T>): Promise<Entity<T>> =>
+			(await this.strapi.create<Entity<T>>(table, entity.attributes)).data
 
-	_updateEntity = <T extends Entity>(table: Table) =>
-		async (entity: T): Promise<T> =>
-			(await this.strapi.update<T>(table, entity.id!, entity.attributes)).data
+	_updateEntity = <T extends Attributes>(table: Table) =>
+		async (entity: Entity<T>): Promise<Entity<T>> =>
+			(await this.strapi.update<Entity<T>>(table, entity.id!, entity.attributes)).data
 
-	_exists = (entity: Entity) => !!entity.id
+	_exists = <T extends Attributes>(entity: Entity<T>) => !!entity.id
 
-	_connectArticlesToTags = (tagArticles: TagArticles, articles: Article[], tags: Tag[]): Tag[] =>
-		tags.map((tag): Tag => ({
+	_connectArticlesToTags = (tagArticles: TagArticles, articles: Entity<Article>[], tags: Entity<Tag>[]): Entity<Tag>[] =>
+		tags.map((tag): Entity<Tag> => ({
 			...tag,
 			attributes: {
 				...tag.attributes,
@@ -128,16 +132,16 @@ export class StrapiExporter {
 
 	_connectArticlesToCollections = (
 		collectionArticles: CollectionArticles,
-		articles: Article[],
-		collections: Collection[]
-	): Collection[] =>
-		collections.map((collection: Collection) => ({
+		articles: Entity<Article>[],
+		collections: Entity<Collection>[]
+	): Entity<Collection>[] =>
+		collections.map((collection) => ({
 			...collection,
 			attributes: {
 				...collection.attributes,
-				articles: articles.filter((article: Article) =>
+				articles: articles.filter((article) =>
 					collectionArticles[collection.attributes.slug].includes(article.attributes.slug )
-				).map((article: Article) => article.id!)
+				).map((article) => article.id!)
 			}
 		}))
 }

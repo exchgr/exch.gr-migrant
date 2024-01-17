@@ -1,7 +1,5 @@
-import {TagAttributes} from "types/TagAttributes"
-
 export type Tag = {
-	id?: number
-	attributes: TagAttributes
-	meta: Record<string, unknown>
+	name: string
+	slug: string
+	articles?: number[]
 }

@@ -1,6 +1,7 @@
-import {Article} from "types/Article"
-import {Tag} from "types/Tag"
-import {Collection} from "types/Collection"
-import {Redirect} from "types/Redirect"
+import {Attributes} from "types/Attributes"
 
-export type Entity = Article | Tag | Collection | Redirect
+export interface Entity<T extends Attributes> {
+	id?: number
+	attributes: T
+	meta: Record<string, unknown>
+}

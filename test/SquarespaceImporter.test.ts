@@ -1,11 +1,11 @@
 import {expect} from "chai"
 import SquarespaceImporter from "../src/SquarespaceImporter"
 import {JSDOM} from "jsdom"
-import {ArticleAttributes} from "../src/types/ArticleAttributes"
-import {TagAttributes} from "../src/types/TagAttributes"
+import {Article} from "../src/types/Article"
+import {Tag} from "../src/types/Tag"
 import {DataContainer} from "../src/types/DataContainer"
 import {DatumContainer} from "../src/types/DatumContainer"
-import {RedirectAttributes} from "../src/types/RedirectAttributes"
+import {Redirect} from "../src/types/Redirect"
 
 describe("SquarespaceImporter", () => {
 	const pubDate = new Date("Mon, 02 Jan 2023 01:08:58 +0000");
@@ -175,7 +175,7 @@ describe("SquarespaceImporter", () => {
 
 			const pubDate = new Date("Mon, 02 Jan 2023 01:08:58 +0000");
 
-			const expectedPost: ArticleAttributes = {
+			const expectedPost: Article = {
 				title: "Rethinking Social Media in 2023: A New Home for my Photos // House of Abundance: Stoop Edition",
 				body: "<article>this is a post</article>",
 				createdAt: pubDate,
@@ -225,7 +225,7 @@ describe("SquarespaceImporter", () => {
 				.querySelector("item")!
 				.querySelector('category[domain="post_tag"]')!
 
-			const expectedTagAttributes: TagAttributes = {
+			const expectedTagAttributes: Tag = {
 				name: "House of Abundance",
 				slug: "house-of-abundance"
 			}
@@ -475,7 +475,7 @@ describe("SquarespaceImporter", () => {
 				}
 			).window.document.querySelector("item")!
 
-			const expectedRedirectAttributes: RedirectAttributes = {
+			const expectedRedirectAttributes: Redirect = {
 				from: "/fotoblog/rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23",
 				httpCode: 301
 			}
