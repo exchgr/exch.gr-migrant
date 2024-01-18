@@ -136,7 +136,7 @@ describe("StrapiExporter", () => {
 				...newTagEntityWithArticleIds
 			}
 
-			const tagArticles: Connection = {
+			const tagArticles: Connection<string[]> = {
 				[extantTagSlug]: [extantArticleSlug, newArticleSlug],
 				[newTagSlug]: [newTagSlug]
 			}
@@ -187,13 +187,15 @@ describe("StrapiExporter", () => {
 				}
 			}
 
-			const collectionArticles: Connection = {
+			const collectionArticles: Connection<string[]> = {
 				[newCollectionSlug]: [extantArticleSlug],
 				[extantCollectionSlug]: [newArticleSlug]
 			}
 
+			const newRedirectFrom = `/fotoblog/${extantArticleSlug}`
+
 			const newRedirect: Redirect = {
-				from: `/fotoblog/${extantArticleSlug}`,
+				from: newRedirectFrom,
 				httpCode: 301
 			}
 
@@ -215,8 +217,10 @@ describe("StrapiExporter", () => {
 				...newRedirectEntityWithArticleId,
 			}
 
+			const extantRedirectFrom = `/fotoblog/${newArticleSlug}`
+
 			const extantRedirect: Redirect = {
-				from: `/fotoblog/${newArticleSlug}`,
+				from: extantRedirectFrom,
 				httpCode: 301
 			}
 
@@ -232,6 +236,11 @@ describe("StrapiExporter", () => {
 					...extantRedirect,
 					to: newArticleId
 				}
+			}
+
+			const redirectArticles: Connection<string> = {
+				[newRedirectFrom]: extantArticleSlug,
+				[extantRedirectFrom]: newArticleSlug
 			}
 
 			const dataContainer: DataContainer = {
@@ -252,7 +261,8 @@ describe("StrapiExporter", () => {
 				redirectAttributesCollection: [
 					newRedirect,
 					extantRedirect
-				]
+				],
+				redirectArticles
 			}
 
 			const extantArticleEntity: Entity<Article> = {
@@ -321,8 +331,8 @@ describe("StrapiExporter", () => {
 				.withArgs(newTagEntityWithArticleIds).returns(false)
 				.withArgs(extantCollectionEntityWithArticleIds).returns(true)
 				.withArgs(newCollectionEntityWithArticleIds).returns(false)
-				.withArgs(extantRedirectEntity).returns(true)
-				.withArgs(newRedirectEntity).returns(false)
+				.withArgs(extantRedirectEntityWithArticleId).returns(true)
+				.withArgs(newRedirectEntityWithArticleId).returns(false)
 
 			const updateEntity = async <T extends Attributes>(entity: Entity<T>): Promise<Entity<T>> => {
 				switch(entity) {
@@ -335,7 +345,7 @@ describe("StrapiExporter", () => {
 					case extantCollectionEntityWithArticleIds: {
 						return extantCollectionEntityWithArticleIds as Entity<T>
 					}
-					case extantRedirectEntity: {
+					case extantRedirectEntityWithArticleId: {
 						return extantRedirectEntityWithArticleId as Entity<T>
 					}
 					default: {
@@ -361,7 +371,7 @@ describe("StrapiExporter", () => {
 					case newCollectionEntityWithArticleIds: {
 						return createdNewCollectionEntityWithArticleIds as Entity<T>
 					}
-					case newRedirectEntity: {
+					case newRedirectEntityWithArticleId: {
 						return createdNewRedirectEntityWithArticleId as Entity<T>
 					}
 					default: {
@@ -377,17 +387,43 @@ describe("StrapiExporter", () => {
 				.withArgs('redirects').returns(createEntity)
 
 
-			stub(strapiExporter, "_connectEntities")
-				.withArgs(
-					match(collectionArticles),
-					match.array.deepEquals([createdNewArticleEntity, extantArticleEntity]),
-					[extantCollectionEntity, newCollectionEntity]
-				).returns([extantCollectionEntityWithArticleIds, newCollectionEntityWithArticleIds])
+			stub(strapiExporter, "_connectEntitiesOneToMany")
 				.withArgs(
 					match(tagArticles),
-					match.array.deepEquals([createdNewArticleEntity, extantArticleEntity]),
+					match.array.deepEquals([
+						createdNewArticleEntity,
+						extantArticleEntity
+					]),
 					[extantTagEntity, newTagEntity]
-				).returns([extantTagEntityWithArticleIds, newTagEntityWithArticleIds])
+				).returns([
+					extantTagEntityWithArticleIds,
+					newTagEntityWithArticleIds
+				])
+
+				.withArgs(
+					match(collectionArticles),
+					match.array.deepEquals([
+						createdNewArticleEntity,
+						extantArticleEntity
+					]),
+					[extantCollectionEntity, newCollectionEntity]
+				).returns([
+				extantCollectionEntityWithArticleIds,
+				newCollectionEntityWithArticleIds
+			])
+
+			stub(strapiExporter, "_connectEntitiesOneToOne")
+				.withArgs(
+					match(redirectArticles),
+					match.array.deepEquals([
+						createdNewArticleEntity,
+						extantArticleEntity
+					]),
+					[newRedirectEntity, extantRedirectEntity]
+				).returns([
+					newRedirectEntityWithArticleId,
+					extantRedirectEntityWithArticleId
+				])
 
 			expect(await strapiExporter.export(dataContainer)).to.deep.eq([
 				createdNewArticleEntity,
@@ -834,13 +870,13 @@ describe("StrapiExporter", () => {
 		})
 	})
 
-	describe("_connectEntities", () => {
+	describe("_connectEntitiesOneToMany", () => {
 		it("should connect two entities by putting A's IDs into B's As field", () => {
 			const tagSlug = "tag"
 			const articleSlug = "article"
 			const articleId = 1
 
-			const tagArticles: Connection = {
+			const tagArticles: Connection<string[]> = {
 				[tagSlug]: [articleSlug]
 			}
 
@@ -889,17 +925,17 @@ describe("StrapiExporter", () => {
 
 			const strapiExporter = new StrapiExporter(strapi)
 
-			expect(strapiExporter._connectEntities(tagArticles, articles, tags, "articles", "slug", "slug")).to.deep.eq(tagsWithArticleIds)
+			expect(strapiExporter._connectEntitiesOneToMany(tagArticles, articles, tags, "articles", "slug", "slug")).to.deep.eq(tagsWithArticleIds)
 		})
 	})
 
-	describe("_connectArticlesToCollections", () => {
+	describe("_connectEntitiesOneToMany", () => {
 		it("should connect created articles to collections by putting articles' IDs into collections' articles field", () => {
 			const collectionSlug = "tag"
 			const articleSlug = "article"
 			const articleId = 1
 
-			const collectionArticles: Connection = {
+			const collectionArticles: Connection<string[]> = {
 				[collectionSlug]: [articleSlug]
 			}
 
@@ -949,9 +985,67 @@ describe("StrapiExporter", () => {
 
 			const strapiExporter = new StrapiExporter(strapi)
 
-			expect(strapiExporter._connectEntities(
+			expect(strapiExporter._connectEntitiesOneToMany(
 				collectionArticles, articles, collections, "articles", "slug", "slug"
 			)).to.deep.eq(collectionsWithArticleIds)
+		})
+	})
+
+	describe("_connectEntitiesOneToOne", () => {
+		it("should connect a created article to its redirect by putting the article's ID into the redirect's `to` field", () => {
+			const pubDate = new Date()
+			const articleSlug = "hi"
+
+			const redirectFrom = `/fotoblog/${articleSlug}`
+
+			const redirectArticles: Connection<string> = {
+				[redirectFrom]: articleSlug
+			}
+
+			const redirectAttributes = {
+				from: redirectFrom,
+				httpCode: 301
+			}
+
+			const redirect = {
+				attributes: redirectAttributes,
+				meta: {}
+			}
+
+			const redirects: Entity<Redirect>[] = [redirect]
+
+			const articleId = 2
+
+			const articles: Entity<Article>[] = [{
+				id: articleId,
+				attributes: {
+					title: "hi",
+					body: "hi",
+					slug: articleSlug,
+					author: "elle mundy",
+					og_type: "post",
+					createdAt: pubDate,
+					updatedAt: pubDate,
+					publishedAt: pubDate
+				},
+				meta: {}
+			}]
+
+			const redirectsWithArticleIds: Entity<Redirect>[] = [{
+				...redirect,
+				attributes: {
+					...redirectAttributes,
+					to: articleId
+				}
+			}]
+
+			const strapi = new Strapi({ url: strapiUrl })
+
+			const strapiExporter = new StrapiExporter(strapi)
+
+			expect(strapiExporter._connectEntitiesOneToOne(
+				redirectArticles, articles, redirects, "to", "slug", "from"
+			)).to.deep.eq(redirectsWithArticleIds)
 		})
 	})
 })

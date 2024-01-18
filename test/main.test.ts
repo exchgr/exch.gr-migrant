@@ -72,7 +72,8 @@ describe("main", () => {
 			tagArticles: {},
 			collectionAttributesCollection: [],
 			collectionArticles: {},
-			redirectAttributesCollection: []
+			redirectAttributesCollection: [],
+			redirectArticles: {}
 		}
 
 		const squarespaceImporter = new SquarespaceImporter()

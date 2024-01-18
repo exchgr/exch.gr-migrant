@@ -1,3 +1,3 @@
-export type Connection = {
-	[collectionSlug: string]: string[]
+export type Connection<T> = {
+	[collectionSlug: string]: T
 }

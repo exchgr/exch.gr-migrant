@@ -6,6 +6,7 @@ import {DatumContainer} from "types/DatumContainer"
 import {Collection} from "types/Collection"
 import {Connection} from "types/Connection"
 import {Redirect} from "types/Redirect"
+import {Attributes} from "types/Attributes"
 
 export default class SquarespaceImporter {
 	import = (squarespaceData: string): DataContainer =>
@@ -102,25 +103,100 @@ export default class SquarespaceImporter {
 				seenCollectionSlugs.includes(collectionAttributes.slug) ? false : seenCollectionSlugs.push(collectionAttributes.slug)
 			),
 
-			tagArticles: datumContainers.reduce((tagArticles, datumContainer): Connection => {
-				datumContainer.tagAttributesCollection.forEach((tagAttributes) => {
-					tagArticles[tagAttributes.slug] ||= []
-					tagArticles[tagAttributes.slug].push(datumContainer.articleAttributes.slug)
-				})
+			tagArticles: datumContainers.reduce(
+				this._connectAttributesManyToMany<Tag, Article>(
+					"tagAttributesCollection",
+					"slug",
+					"articleAttributes",
+					"slug"
+				),
+				{}
+			),
 
-				return tagArticles
-			}, {} as Connection),
-
-			collectionArticles: datumContainers.reduce((collectionArticles, datumContainer): Connection => {
-				collectionArticles[datumContainer.collectionAttributes.slug] ||= []
-				collectionArticles[datumContainer.collectionAttributes.slug].push(datumContainer.articleAttributes.slug)
-
-				return collectionArticles
-			}, {} as Connection),
+			collectionArticles: datumContainers.reduce(
+				this._connectAttributesOneToMany<Collection, Article>(
+					"collectionAttributes",
+					"slug",
+					"articleAttributes",
+					"slug"
+				),
+				{}
+			),
 
 			redirectAttributesCollection: datumContainers.map((datumContainer: DatumContainer) => (
 				datumContainer.redirectAttributes
-			))
+			)),
+
+			redirectArticles: datumContainers.reduce(
+				this._connectAttributesOneToOne<Redirect, Article>(
+					"redirectAttributes",
+					"from",
+					"articleAttributes",
+					"slug"
+				),
+				{}
+			)
 		}
+	}
+
+	_connectAttributesManyToMany = <
+		T extends Attributes,
+		U extends Attributes
+	>(
+		datumContainerTKey: keyof DatumContainer,
+		tKey: keyof T,
+		datumContainerUKey: keyof DatumContainer,
+		uKey: keyof U
+	) => (
+		connections: Connection<string[]>,
+		datumContainer: DatumContainer,
+	): Connection<string[]> => {
+		(datumContainer[datumContainerTKey] as T[]).forEach((t) => {
+			connections[t[tKey] as string] ||= []
+			connections[t[tKey] as string].push(
+				(datumContainer[datumContainerUKey] as U)[uKey] as string
+			)
+		})
+
+		return connections
+	}
+
+	_connectAttributesOneToMany = <
+		T extends Attributes,
+		U extends Attributes
+	>(
+		datumContainerTKey: keyof DatumContainer,
+		tKey: keyof T,
+		datumContainerUKey: keyof DatumContainer,
+		uKey: keyof U
+	) => (
+		connections: Connection<string[]>,
+		datumContainer: DatumContainer
+): Connection<string[]> => {
+		connections[(datumContainer[datumContainerTKey] as T)[tKey] as string]
+			||= []
+
+		connections[(datumContainer[datumContainerTKey] as T)[tKey] as string]
+			.push((datumContainer[datumContainerUKey] as U)[uKey] as string)
+
+		return connections
+	}
+
+	_connectAttributesOneToOne = <
+		T extends Attributes,
+		U extends Attributes
+	>(
+		datumContainerTKey: keyof DatumContainer,
+		tKey: keyof T,
+		datumContainerUKey: keyof DatumContainer,
+		uKey: keyof U
+	) => (
+		connections: Connection<string>,
+		datumContainer: DatumContainer
+	): Connection<string> => {
+		connections[(datumContainer[datumContainerTKey] as T)[tKey] as string] =
+			(datumContainer[datumContainerUKey] as U)[uKey] as string
+
+		return connections
 	}
 }

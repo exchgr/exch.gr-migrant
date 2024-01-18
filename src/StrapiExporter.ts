@@ -14,11 +14,10 @@ export class StrapiExporter {
 	}
 
 	export = async (dataContainer: DataContainer): Promise<Entity<Attributes>[]> => {
-		const array = await Promise.all(dataContainer.articleAttributesCollection.map(
-			this._findOrInitEntityByProperty('articles', 'slug')
-		))
 		const [extantArticles, newArticles] = partition(
-			array,
+			await Promise.all(dataContainer.articleAttributesCollection.map(
+				this._findOrInitEntityByProperty('articles', 'slug')
+			)),
 			this._exists
 		)
 
@@ -29,7 +28,7 @@ export class StrapiExporter {
 
 
 		const [extantTags, newTags] = partition(
-			this._connectEntities(
+			this._connectEntitiesOneToMany(
 				dataContainer.tagArticles,
 				ensuredArticles,
 				await Promise.all(
@@ -45,7 +44,7 @@ export class StrapiExporter {
 		)
 
 		const [extantCollections, newCollections] = partition(
-			this._connectEntities(
+			this._connectEntitiesOneToMany(
 				dataContainer.collectionArticles,
 				ensuredArticles,
 				await Promise.all(
@@ -61,8 +60,15 @@ export class StrapiExporter {
 		)
 
 		const [extantRedirects, newRedirects] = partition(
-			await Promise.all(
-				dataContainer.redirectAttributesCollection.map(this._findOrInitEntityByProperty('redirects', 'from'))
+			this._connectEntitiesOneToOne(
+				dataContainer.redirectArticles,
+				ensuredArticles,
+				await Promise.all(
+					dataContainer.redirectAttributesCollection.map(this._findOrInitEntityByProperty('redirects', 'from'))
+				),
+				"to",
+				"slug",
+				"from"
 			),
 			this._exists
 		)
@@ -120,11 +126,11 @@ export class StrapiExporter {
 
 	_exists = <T extends Attributes>(entity: Entity<T>) => !!entity.id
 
-	_connectEntities = <
+	_connectEntitiesOneToMany = <
 		T extends Attributes,
 		U extends Attributes
 	>(
-		collectionArticles: Connection,
+		connections: Connection<string[]>,
 		tEntities: Entity<T>[],
 		uEntities: Entity<U>[],
 		connectionField: keyof U,
@@ -136,9 +142,31 @@ export class StrapiExporter {
 			attributes: {
 				...uEntity.attributes,
 				[connectionField]: tEntities.filter((tEntity) =>
-					collectionArticles[uEntity.attributes[uConnectionKey] as string]
+					connections[uEntity.attributes[uConnectionKey] as string]
 						.includes(tEntity.attributes[tConnectionKey] as string)
-				).map((article) => article.id!)
+				).map((entity) => entity.id!)
+			}
+		}))
+
+	_connectEntitiesOneToOne = <
+		T extends Attributes,
+		U extends Attributes
+	>(
+		connections: Connection<string>,
+		tEntities: Entity<T>[],
+		uEntities: Entity<U>[],
+		connectionField: keyof U,
+		tConnectionKey: keyof T,
+		uConnectionKey: keyof U
+	): Entity<U>[] =>
+		uEntities.map((uEntity) => ({
+			...uEntity,
+			attributes: {
+				...uEntity.attributes,
+				[connectionField]: tEntities.filter((tEntity) =>
+					connections[uEntity.attributes[uConnectionKey] as string]
+						.includes(tEntity.attributes[tConnectionKey] as string)
+				)[0].id!
 			}
 		}))
 }

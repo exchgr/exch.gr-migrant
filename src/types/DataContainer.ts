@@ -7,8 +7,9 @@ import {Redirect} from "types/Redirect"
 export type DataContainer = {
 	articleAttributesCollection: Article[]
 	tagAttributesCollection: Tag[]
-	tagArticles: Connection
+	tagArticles: Connection<Article["slug"][]>
 	collectionAttributesCollection: Collection[]
-	collectionArticles: Connection
+	collectionArticles: Connection<Article["slug"][]>
 	redirectAttributesCollection: Redirect[]
+	redirectArticles: Connection<Article["slug"]>
 }
