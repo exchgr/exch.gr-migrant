@@ -559,6 +559,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/slug@npm:^5.0.7":
+  version: 5.0.7
+  resolution: "@types/slug@npm:5.0.7"
+  checksum: 4c84dca6e94697f5e64c74fe6b9c33d11375a30041ac018f696fb9865118e5ffb1421648ce0c74da3c5e23c66040125365258bf648b43342918f4e2109dc4792
+  languageName: node
+  linkType: hard
+
 "@types/tough-cookie@npm:*":
   version: 4.0.5
   resolution: "@types/tough-cookie@npm:4.0.5"
@@ -1350,14 +1357,17 @@ __metadata:
     "@types/node": ^20.8.10
     "@types/sinon": ^10.0.20
     "@types/sinon-chai": ^3.2.11
+    "@types/slug": ^5.0.7
     chai: ^4.3.10
     chai-as-promised: ^7.1.1
     jsdom: ^22.1.0
     minimist: ^1.2.8
     mocha: ^10.2.0
+    moment: ^2.30.1
     nyc: ^15.1.0
     sinon: ^17.0.0
     sinon-chai: ^3.7.0
+    slug: ^8.2.3
     source-map-support: ^0.5.21
     strapi-sdk-js: ^2.3.3
     ts-node: ^10.9.1
@@ -2416,6 +2426,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"moment@npm:^2.30.1":
+  version: 2.30.1
+  resolution: "moment@npm:2.30.1"
+  checksum: 859236bab1e88c3e5802afcf797fc801acdbd0ee509d34ea3df6eea21eb6bcc2abd4ae4e4e64aa7c986aa6cba563c6e62806218e6412a765010712e5fa121ba6
+  languageName: node
+  linkType: hard
+
 "ms@npm:2.1.2":
   version: 2.1.2
   resolution: "ms@npm:2.1.2"
@@ -3011,6 +3028,15 @@ __metadata:
     nise: ^5.1.5
     supports-color: ^7.2.0
   checksum: f7b5dee7676222d42c00ec30087d92780cee526ed3266cdddffce845a4d3775ba9e871a77aaee7a1c46b1f2b307aaa2fb6a1f99dde84a4f12ee4e80459f5a9dc
+  languageName: node
+  linkType: hard
+
+"slug@npm:^8.2.3":
+  version: 8.2.3
+  resolution: "slug@npm:8.2.3"
+  bin:
+    slug: cli.js
+  checksum: eb2fbf8d13df0a94f09ffd7c20e02d5e88c1fdd51e178fe8e670937747dec5a97efd172956b914efd5eb3fadd65a306a68f4eed0327a8c5c9a8af30f2c95a46b
   languageName: node
   linkType: hard
 

@@ -1,37 +1,48 @@
 import SquarespaceImporter from "SquarespaceImporter"
-import minimist from "minimist"
 import FsProxy from "fsProxy"
 import {StrapiFactory} from "StrapiFactory"
 import {StrapiExporterFactory} from "StrapiExporterFactory"
+import TumblrImporter from "TumblrImporter"
+import {ValidateArgv} from "lib/validateArgv"
+import {DatumContainer} from "types/DatumContainer"
+import {DataContainerCollater} from "DataContainerCollater"
+import {ReadTumblrPosts} from "lib/readTumblrPosts"
 
 const main = async (
 	argv: string[],
+	validateArgv: ValidateArgv,
 	fsProxy: FsProxy,
 	squarespaceImporter: SquarespaceImporter,
+	readTumblrPosts: ReadTumblrPosts,
+	tumblrImporter: TumblrImporter,
+	dataContainerCollater: DataContainerCollater,
 	buildStrapi: StrapiFactory,
 	buildStrapiExporter: StrapiExporterFactory
 ) => {
-	const options = minimist(argv, {
-		alias: {
-			s: 'squarespace',
-			t: 'strapi'
-		}
-	})
-
-	if (!options.strapi) throw new Error('Strapi server unspecified.')
+	const options = validateArgv(argv, fsProxy)
 	const strapi = buildStrapi({ url: options.strapi })
+	const strapiExporter = buildStrapiExporter(strapi)
+	const datumContainers: DatumContainer[][] = []
 
 	if (options.squarespace) {
-		const dataContainer = squarespaceImporter.import(
+		datumContainers.push(squarespaceImporter.import(
 			fsProxy.readFileSync(
 				options.squarespace
 			).toString()
-		)
-
-		const strapiExporter = buildStrapiExporter(strapi)
-
-		await strapiExporter.export(dataContainer)
+		))
 	}
+
+	if (options.tumblr) {
+		datumContainers.push(tumblrImporter.import(
+			readTumblrPosts(fsProxy, options.tumblr)
+		))
+	}
+
+	await strapiExporter.export(
+		dataContainerCollater.collate(
+			datumContainers.flat()
+		)
+	)
 }
 
 export {

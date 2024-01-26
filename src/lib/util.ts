@@ -13,3 +13,11 @@ export const promiseSequence = async <T>(promises: Promise<T>[]): Promise<T[]> =
 
 	return keptPromises
 }
+
+export const titleize = (string: string): string =>
+	string.replace(
+		/\b\w+/g,
+		function(txt) {
+			return txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase();
+		}
+	)

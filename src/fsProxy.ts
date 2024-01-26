@@ -3,7 +3,10 @@
 import * as fs from "fs";
 
 export default class FsProxy {
-	readFileSync(filename: string | Buffer | URL | number) {
-		return fs.readFileSync(filename)
-	}
+	readFileSync = (path: fs.PathLike) =>
+		fs.readFileSync(path)
+	readdirSync = (path: fs.PathLike) =>
+		fs.readdirSync(path)
+  existsSync = (path: fs.PathLike) =>
+		fs.existsSync(path)
 }

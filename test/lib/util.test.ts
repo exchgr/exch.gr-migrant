@@ -1,5 +1,5 @@
 import {expect} from "chai"
-import {partition, promiseSequence} from "../../src/lib/util"
+import {partition, promiseSequence, titleize} from "../../src/lib/util"
 
 describe("util", () => {
 	describe("partition", () => {
@@ -18,6 +18,12 @@ describe("util", () => {
 			]
 
 			expect(await promiseSequence(promises)).to.deep.eq([0, 1, 2, 3])
+		})
+	})
+
+	describe("titleize", () => {
+		it("should titleize a string", () => {
+			expect(titleize("hi-there, bob")).to.eq("Hi-There, Bob")
 		})
 	})
 })
