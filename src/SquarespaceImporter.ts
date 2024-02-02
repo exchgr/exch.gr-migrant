@@ -33,12 +33,18 @@ export default class SquarespaceImporter {
 	_isPublished = (item: Element) =>
 		item.querySelector("wp\\:status")?.textContent == "publish"
 
-	_convertToArticleAttributes = (item: Element): Article => {
+	_convertToArticle = (item: Element): Article => {
 		const pubDate = new Date(item.querySelector("pubDate")!.textContent!);
 
 		return {
 			title: item.querySelector("title")!.textContent!,
-			body: Array.from(item.querySelector("content\\:encoded")!.childNodes)[0].textContent!,
+			body: new JSDOM(
+				Array.from(item.querySelector("content\\:encoded")!.childNodes)[0].textContent!,
+				{
+					contentType: "text/html",
+					url: "http://localhost"
+				}
+			).window.document.querySelector("article")!.textContent!,
 			createdAt: pubDate,
 			publishedAt: pubDate,
 			updatedAt: pubDate,
@@ -65,7 +71,7 @@ export default class SquarespaceImporter {
 
 	_convertToDatumContainer = (item: Element): DatumContainer =>
 		({
-			articleAttributes: this._convertToArticleAttributes(item),
+			articleAttributes: this._convertToArticle(item),
 
 			tagAttributesCollection: this
 				._extractCategories(item)
