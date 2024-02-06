@@ -1,5 +1,5 @@
 import Strapi from "strapi-sdk-js"
-import {partition, promiseSequence} from "./lib/util"
+import {partition, promiseSequence} from "../lib/util"
 import {DataContainer} from "types/DataContainer"
 import {Connection} from "types/Connection"
 import {Entity} from "types/Entity"

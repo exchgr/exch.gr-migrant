@@ -4,8 +4,8 @@ import {Collection} from "types/Collection"
 import {Redirect} from "types/Redirect"
 
 export type DatumContainer = {
-	articleAttributes: Article,
-	tagAttributesCollection: Tag[],
-	collectionAttributes: Collection,
-	redirectAttributes: Redirect
+	article: Article,
+	tags: Tag[],
+	collection: Collection,
+	redirect: Redirect
 }

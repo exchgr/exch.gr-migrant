@@ -1,25 +1,21 @@
 import {main} from "main"
-import SquarespaceImporter from "SquarespaceImporter"
+import {importSquarespace} from "./importers/SquarespaceImporter"
 import * as fs from "fs"
-import {buildStrapi} from "StrapiFactory"
-import {buildStrapiExporter} from "StrapiExporterFactory"
-import TumblrImporter from "TumblrImporter"
+import {buildStrapi} from "factories/StrapiFactory"
+import {buildStrapiExporter} from "factories/StrapiExporterFactory"
 import {validateArgv} from "lib/validateArgv"
-import {DataContainerCollater} from "DataContainerCollater"
+import {collateDataContainer} from "DataContainerCollater"
 import {readTumblrPosts} from "lib/readTumblrPosts"
-
-const squarespaceImporter = new SquarespaceImporter()
-const tumblrImporter = new TumblrImporter()
-const dataContainerCollater = new DataContainerCollater()
+import {importTumblr} from "importers/TumblrImporter"
 
 main(
 	process.argv,
 	validateArgv,
 	fs,
-	squarespaceImporter,
+	importSquarespace,
 	readTumblrPosts,
-	tumblrImporter,
-	dataContainerCollater,
+	importTumblr,
+	collateDataContainer,
 	buildStrapi,
 	buildStrapiExporter
 )

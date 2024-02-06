@@ -1,5 +1,5 @@
 import Strapi from "strapi-sdk-js"
-import {StrapiExporter} from "StrapiExporter"
+import {StrapiExporter} from "exporters/StrapiExporter"
 
 export type StrapiExporterFactory = (strapi: Strapi) => StrapiExporter
 

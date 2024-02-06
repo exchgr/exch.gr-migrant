@@ -1,19 +1,21 @@
 import {JSDOM} from "jsdom"
 import chai, {expect} from 'chai'
 import {main} from "../src/main"
-import {stub} from "sinon"
+import {spy, stub} from "sinon"
 import sinonChai from "sinon-chai"
 import chaiAsPromised from "chai-as-promised"
-import SquarespaceImporter from "../src/SquarespaceImporter"
 import FsProxy from "../src/fsProxy"
 import Strapi, {StrapiOptions} from "strapi-sdk-js"
-import {StrapiExporter} from "../src/StrapiExporter"
+import {StrapiExporter} from "../src/exporters/StrapiExporter"
 import {DataContainer} from "../src/types/DataContainer"
-import TumblrImporter from "../src/TumblrImporter"
 import {ValidateArgv} from "../src/lib/validateArgv"
 import {DatumContainer} from "../src/types/DatumContainer"
 import {DataContainerCollater} from "../src/DataContainerCollater"
 import {TumblrPost} from "../src/types/TumblrPost"
+import {SquarespaceImporter} from "../src/importers/SquarespaceImporter"
+import {TumblrImporter} from "../src/importers/TumblrImporter"
+import {StrapiFactory} from "../src/factories/StrapiFactory"
+import {StrapiExporterFactory} from "../src/factories/StrapiExporterFactory"
 
 chai.use(sinonChai)
 chai.use(chaiAsPromised)
@@ -38,7 +40,7 @@ describe("main", () => {
 
 		const squarespaceDatumContainers: DatumContainer[] = [
 			{
-				articleAttributes: {
+				article: {
 					title: "hi",
 					body: "hi",
 					createdAt: pubDate,
@@ -48,25 +50,24 @@ describe("main", () => {
 					author: "elle mundy",
 					og_type: "article",
 				},
-				tagAttributesCollection: [
+				tags: [
 					{
 						name: "hi",
 						slug: "hi"
 					}
 				],
-				collectionAttributes: {
+				collection: {
 					name: "Photography",
 					slug: "photography"
 				},
-				redirectAttributes: {
+				redirect: {
 					from: "/fotoblog/hi",
 					httpCode: 301
 				}
 			}
 		]
 
-		const squarespaceImporter = new SquarespaceImporter()
-		stub(squarespaceImporter, "import").withArgs(squarespaceData).returns(squarespaceDatumContainers)
+		const importSquarespace: SquarespaceImporter = spy((_data: string) => squarespaceDatumContainers)
 
 		const tumblrPostFilenames = [
 			"1.html",
@@ -90,7 +91,7 @@ describe("main", () => {
 
 		const tumblrDatumContainers: DatumContainer[] = [
 			{
-				articleAttributes: {
+				article: {
 					title: "hey",
 					body: "hey",
 					createdAt: pubDate,
@@ -100,7 +101,7 @@ describe("main", () => {
 					author: "elle mundy",
 					og_type: "article",
 				},
-				tagAttributesCollection: [
+				tags: [
 					{
 						name: "hi",
 						slug: "hi"
@@ -110,19 +111,18 @@ describe("main", () => {
 						slug: "hey"
 					}
 				],
-				collectionAttributes: {
+				collection: {
 					name: "Code",
 					slug: "code"
 				},
-				redirectAttributes: {
+				redirect: {
 					from: "/fotoblog/hey",
 					httpCode: 301
 				}
 			}
 		]
 
-		const tumblrImporter = new TumblrImporter()
-		stub(tumblrImporter, "import").withArgs(tumblrPosts).returns(tumblrDatumContainers)
+		const importTumblr: TumblrImporter = spy((_tumblrPosts: TumblrPost[]) => tumblrDatumContainers)
 
 		const dataContainer: DataContainer = {
 			articleAttributesCollection: [],
@@ -134,17 +134,16 @@ describe("main", () => {
 			redirectArticles: {}
 		}
 
-		const dataContainerCollater = new DataContainerCollater()
-		stub(dataContainerCollater, "collate").withArgs([
-			...squarespaceDatumContainers,
-			...tumblrDatumContainers,
-		]).returns(dataContainer)
+		const collateDataContainer: DataContainerCollater =
+			spy(
+				(_datumContainers: DatumContainer[]): DataContainer => dataContainer
+			)
 
 		const strapi = new Strapi({ url: strapiUrl })
-		const buildStrapi = (_strapiOptions: StrapiOptions) => strapi
+		const buildStrapi: StrapiFactory = (_strapiOptions: StrapiOptions) => strapi
 
 		const strapiExporter = new StrapiExporter(strapi)
-		const buildStrapiExporter = (_: Strapi) => strapiExporter
+		const buildStrapiExporter: StrapiExporterFactory = (_: Strapi) => strapiExporter
 
 		stub(strapiExporter, "export").withArgs(dataContainer).resolves([])
 
@@ -160,11 +159,14 @@ describe("main", () => {
 			}
 		)
 
-		await main(argv, fakeValidate, fsProxy, squarespaceImporter, readTumblrPosts, tumblrImporter, dataContainerCollater, buildStrapi, buildStrapiExporter)
+		await main(argv, fakeValidate, fsProxy, importSquarespace, readTumblrPosts, importTumblr, collateDataContainer, buildStrapi, buildStrapiExporter)
 
-		expect(squarespaceImporter.import).to.have.been.calledWith(squarespaceData)
-		expect(tumblrImporter.import).to.have.been.calledWith(tumblrPosts)
+		expect(importSquarespace).to.have.been.calledWith(squarespaceData)
+		expect(importTumblr).to.have.been.calledWith(tumblrPosts)
 		expect(strapiExporter.export).to.have.been.calledWith(dataContainer)
-		}
-	)
+		expect(collateDataContainer).to.have.been.calledWith([
+			...squarespaceDatumContainers,
+			...tumblrDatumContainers,
+		])
+	})
 })

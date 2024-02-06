@@ -1,21 +1,21 @@
-import SquarespaceImporter from "SquarespaceImporter"
 import FsProxy from "fsProxy"
-import {StrapiFactory} from "StrapiFactory"
-import {StrapiExporterFactory} from "StrapiExporterFactory"
-import TumblrImporter from "TumblrImporter"
+import {StrapiFactory} from "factories/StrapiFactory"
+import {StrapiExporterFactory} from "factories/StrapiExporterFactory"
+import {TumblrImporter} from "./importers/TumblrImporter"
 import {ValidateArgv} from "lib/validateArgv"
 import {DatumContainer} from "types/DatumContainer"
 import {DataContainerCollater} from "DataContainerCollater"
 import {ReadTumblrPosts} from "lib/readTumblrPosts"
+import {SquarespaceImporter} from "importers/SquarespaceImporter"
 
 const main = async (
 	argv: string[],
 	validateArgv: ValidateArgv,
 	fsProxy: FsProxy,
-	squarespaceImporter: SquarespaceImporter,
+	importSquarespace: SquarespaceImporter,
 	readTumblrPosts: ReadTumblrPosts,
-	tumblrImporter: TumblrImporter,
-	dataContainerCollater: DataContainerCollater,
+	importTumblr: TumblrImporter,
+	collateDataContainer: DataContainerCollater,
 	buildStrapi: StrapiFactory,
 	buildStrapiExporter: StrapiExporterFactory
 ) => {
@@ -25,7 +25,7 @@ const main = async (
 	const datumContainers: DatumContainer[][] = []
 
 	if (options.squarespace) {
-		datumContainers.push(squarespaceImporter.import(
+		datumContainers.push(importSquarespace(
 			fsProxy.readFileSync(
 				options.squarespace
 			).toString()
@@ -33,13 +33,13 @@ const main = async (
 	}
 
 	if (options.tumblr) {
-		datumContainers.push(tumblrImporter.import(
+		datumContainers.push(importTumblr(
 			readTumblrPosts(fsProxy, options.tumblr)
 		))
 	}
 
 	await strapiExporter.export(
-		dataContainerCollater.collate(
+		collateDataContainer(
 			datumContainers.flat()
 		)
 	)
