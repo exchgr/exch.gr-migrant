@@ -26,7 +26,6 @@ export class StrapiExporter {
 			...extantArticles.map(this._updateEntity('articles')),
 		])
 
-
 		const [extantTags, newTags] = partition(
 			this._connectEntitiesOneToMany(
 				dataContainer.tagArticles,

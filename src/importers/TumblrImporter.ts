@@ -29,28 +29,39 @@ export const _isText = (post: TumblrPost): boolean =>
 	!!post.dom.querySelector("h1")?.textContent
 
 export const _textToDatumContainer = (post: TumblrPost): DatumContainer => ({
-	article: _constructTextArticle(post.dom),
+	article: _constructTextArticle(post),
 	tags: _constructTags(post.dom),
 	collection: _constructCollection(post.dom),
 	redirect: _constructTextRedirect(post)
 })
 
-export const _constructTextArticle = (dom: Document): Article => {
+export const _sanitizeBody = (id: string, body: Element) => {
+	Array.from(body.querySelectorAll("img")).forEach(
+		(img, index) => {
+			img.src = `../../media/${id}_${index}${img.src.match(/\.[^.]+$/)![0]}`
+			img.removeAttribute("srcset")
+			img.removeAttribute("sizes")
+		})
+
+	return body.innerHTML.trim()
+}
+
+export const _constructTextArticle = (post: TumblrPost): Article => {
 	const pubDate = moment(
-		dom.querySelector("#footer #timestamp")!.textContent!,
+		post.dom.querySelector("#footer #timestamp")!.textContent!,
 		"MMMM Do, YYYY h:mma".trim()
 	).toDate()
 
 	// clone body so we don't remove elements that other methods need later
-	const body = dom.createElement("body")
-	body.innerHTML = dom.querySelector("body")!.innerHTML
+	const body = post.dom.createElement("body")
+	body.innerHTML = post.dom.querySelector("body")!.innerHTML
 
 	body.removeChild(body.querySelector("#footer")!)
 	const title = body.removeChild(body.querySelector("h1")!).textContent!
 
 	return {
 		title,
-		body: body.innerHTML.trim(), // excludes title and footer
+		body: _sanitizeBody(post.id, body), // excludes title and footer
 		createdAt: pubDate,
 		publishedAt: pubDate,
 		updatedAt: pubDate,
@@ -95,7 +106,7 @@ export const _isPhoto = (post: TumblrPost): boolean =>
 	!!post.dom.querySelector(".npf_row")
 
 export const _photoToDatumContainer = (post: TumblrPost): DatumContainer => ({
-	article: _constructPhotoArticle(post.dom),
+	article: _constructPhotoArticle(post),
 	tags: _constructTags(post.dom),
 	collection: _constructCollection(post.dom),
 	redirect: _constructPhotoRedirect(post)
@@ -106,17 +117,17 @@ export const _constructPhotoRedirect = (post: TumblrPost): Redirect => ({
 	httpCode: 301
 })
 
-export const _constructPhotoArticle = (dom: Document): Article => {
+export const _constructPhotoArticle = (post: TumblrPost): Article => {
 	const pubDate = moment(
-		dom.querySelector("#footer #timestamp")!.textContent!,
+		post.dom.querySelector("#footer #timestamp")!.textContent!,
 		"MMMM Do, YYYY h:mma".trim()
 	).toDate()
 
-	const title = dom.querySelector("p.npf_chat")!.textContent!
+	const title = post.dom.querySelector("p.npf_chat")!.textContent!
 
 	return ({
 		title: title,
-		body: dom.querySelector(".npf_row")!.innerHTML.trim(),
+		body: _sanitizeBody(post.id, post.dom.querySelector(".npf_row")!),
 		createdAt: pubDate,
 		publishedAt: pubDate,
 		updatedAt: pubDate,
