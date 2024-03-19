@@ -16,6 +16,10 @@ import {SquarespaceImporter} from "../src/importers/SquarespaceImporter"
 import {TumblrImporter} from "../src/importers/TumblrImporter"
 import {StrapiFactory} from "../src/factories/StrapiFactory"
 import {StrapiExporterFactory} from "../src/factories/StrapiExporterFactory"
+import axios, {AxiosInstance} from "axios"
+import {AxiosFactory} from "../src/factories/AxiosFactory"
+import {AssetMigratorFactory} from "../src/types/AssetMigratorFactory"
+import {TumblrAssetMigrator} from "../src/assetMigrators/TumblrAssetMigrator"
 
 chai.use(sinonChai)
 chai.use(chaiAsPromised)
@@ -38,18 +42,20 @@ describe("main", () => {
 
 		const pubDate = new Date()
 
+		const squarespaceArticle = {
+			title: "hi",
+			body: "hi",
+			createdAt: pubDate,
+			publishedAt: pubDate,
+			updatedAt: pubDate,
+			slug: "hi",
+			author: "elle mundy",
+			og_type: "article",
+		}
+
 		const squarespaceDatumContainers: DatumContainer[] = [
 			{
-				article: {
-					title: "hi",
-					body: "hi",
-					createdAt: pubDate,
-					publishedAt: pubDate,
-					updatedAt: pubDate,
-					slug: "hi",
-					author: "elle mundy",
-					og_type: "article",
-				},
+				article: squarespaceArticle,
 				tags: [
 					{
 						name: "hi",
@@ -67,7 +73,9 @@ describe("main", () => {
 			}
 		]
 
-		const importSquarespace: SquarespaceImporter = spy((_data: string) => squarespaceDatumContainers)
+		const importSquarespace: SquarespaceImporter = spy((_data: string) =>
+			squarespaceDatumContainers
+		)
 
 		const tumblrPostFilenames = [
 			"1.html",
@@ -89,18 +97,20 @@ describe("main", () => {
 
 		stub(fsProxy, "readdirSync").withArgs(tumblrDirectory).returns(tumblrPostFilenames)
 
+		const tumblrArticle = {
+			title: "hey",
+			body: "hey",
+			createdAt: pubDate,
+			publishedAt: pubDate,
+			updatedAt: pubDate,
+			slug: "hey",
+			author: "elle mundy",
+			og_type: "article",
+		}
+
 		const tumblrDatumContainers: DatumContainer[] = [
 			{
-				article: {
-					title: "hey",
-					body: "hey",
-					createdAt: pubDate,
-					publishedAt: pubDate,
-					updatedAt: pubDate,
-					slug: "hey",
-					author: "elle mundy",
-					og_type: "article",
-				},
+				article: tumblrArticle,
 				tags: [
 					{
 						name: "hi",
@@ -122,7 +132,9 @@ describe("main", () => {
 			}
 		]
 
-		const importTumblr: TumblrImporter = spy((_tumblrPosts: TumblrPost[]) => tumblrDatumContainers)
+		const importTumblr: TumblrImporter = spy((_tumblrPosts: TumblrPost[]) =>
+			tumblrDatumContainers
+		)
 
 		const dataContainer: DataContainer = {
 			articleAttributesCollection: [],
@@ -133,6 +145,20 @@ describe("main", () => {
 			redirectAttributesCollection: [],
 			redirectArticles: {}
 		}
+
+		const buildAxios: AxiosFactory = (_: string) => axios.create()
+
+		const tumblrAssetMigrator =
+			new TumblrAssetMigrator(
+				axios,
+				fsProxy,
+				tumblrDirectory
+			)
+
+		spy(tumblrAssetMigrator, "migrateAssets")
+
+		const buildTumblrAssetMigrator: AssetMigratorFactory =
+			() => tumblrAssetMigrator
 
 		const collateDataContainer: DataContainerCollater =
 			spy(
@@ -159,7 +185,19 @@ describe("main", () => {
 			}
 		)
 
-		await main(argv, fakeValidate, fsProxy, importSquarespace, readTumblrPosts, importTumblr, collateDataContainer, buildStrapi, buildStrapiExporter)
+		await main(
+			argv,
+			fakeValidate,
+			fsProxy,
+			importSquarespace,
+			readTumblrPosts,
+			importTumblr,
+			collateDataContainer,
+			buildStrapi,
+			buildStrapiExporter,
+			buildAxios,
+			buildTumblrAssetMigrator,
+		)
 
 		expect(importSquarespace).to.have.been.calledWith(squarespaceData)
 		expect(importTumblr).to.have.been.calledWith(tumblrPosts)
@@ -168,5 +206,6 @@ describe("main", () => {
 			...squarespaceDatumContainers,
 			...tumblrDatumContainers,
 		])
+		expect(tumblrAssetMigrator.migrateAssets).to.have.been.calledWith(tumblrArticle)
 	})
 })

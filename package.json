@@ -3,6 +3,7 @@
   "packageManager": "yarn@3.4.1",
   "devDependencies": {
     "@istanbuljs/nyc-config-typescript": "^1.0.2",
+    "@types/axios": "^0.14.0",
     "@types/chai": "^4.3.9",
     "@types/jsdom": "^21.1.5",
     "@types/minimist": "^1.2.4",
@@ -22,6 +23,7 @@
   },
   "dependencies": {
     "@types/chai-as-promised": "^7.1.8",
+    "axios": "^1.6.8",
     "chai-as-promised": "^7.1.1",
     "jsdom": "^22.1.0",
     "minimist": "^1.2.8",

@@ -7,6 +7,8 @@ import {validateArgv} from "lib/validateArgv"
 import {collateDataContainer} from "DataContainerCollater"
 import {readTumblrPosts} from "lib/readTumblrPosts"
 import {importTumblr} from "importers/TumblrImporter"
+import {buildAxios} from "factories/AxiosFactory"
+import {buildTumblrAssetMigrator} from "factories/TumblrAssetMigratorFactory"
 
 main(
 	process.argv,
@@ -17,5 +19,7 @@ main(
 	importTumblr,
 	collateDataContainer,
 	buildStrapi,
-	buildStrapiExporter
+	buildStrapiExporter,
+	buildAxios,
+	buildTumblrAssetMigrator
 )

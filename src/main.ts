@@ -7,6 +7,9 @@ import {DatumContainer} from "types/DatumContainer"
 import {DataContainerCollater} from "DataContainerCollater"
 import {ReadTumblrPosts} from "lib/readTumblrPosts"
 import {SquarespaceImporter} from "importers/SquarespaceImporter"
+import {AxiosFactory} from "factories/AxiosFactory"
+import {AssetMigratorFactory} from "types/AssetMigratorFactory"
+import {promiseSequence} from "./lib/util"
 
 const main = async (
 	argv: string[],
@@ -17,15 +20,19 @@ const main = async (
 	importTumblr: TumblrImporter,
 	collateDataContainer: DataContainerCollater,
 	buildStrapi: StrapiFactory,
-	buildStrapiExporter: StrapiExporterFactory
+	buildStrapiExporter: StrapiExporterFactory,
+	buildAxios: AxiosFactory,
+	buildTumblrAssetMigrator: AssetMigratorFactory
 ) => {
 	const options = validateArgv(argv, fsProxy)
 	const strapi = buildStrapi({ url: options.strapi })
+	const axios = buildAxios(options.strapi)
 	const strapiExporter = buildStrapiExporter(strapi)
-	const datumContainers: DatumContainer[][] = []
+	const tumblrAssetMigrator = buildTumblrAssetMigrator(axios, fsProxy, options.tumblr)
+	const datumContainers: DatumContainer[] = []
 
 	if (options.squarespace) {
-		datumContainers.push(importSquarespace(
+		datumContainers.push.apply(datumContainers, importSquarespace(
 			fsProxy.readFileSync(
 				options.squarespace
 			).toString()
@@ -33,15 +40,20 @@ const main = async (
 	}
 
 	if (options.tumblr) {
-		datumContainers.push(importTumblr(
-			readTumblrPosts(fsProxy, options.tumblr)
-		))
+		datumContainers.push.apply(
+			datumContainers,
+			await promiseSequence(importTumblr(
+				readTumblrPosts(fsProxy, options.tumblr)
+			).map(async (datumContainer) => (
+				datumContainer.article = await tumblrAssetMigrator.migrateAssets(datumContainer.article),
+						datumContainer
+				))
+			)
+		)
 	}
 
 	await strapiExporter.export(
-		collateDataContainer(
-			datumContainers.flat()
-		)
+		collateDataContainer(datumContainers)
 	)
 }
 

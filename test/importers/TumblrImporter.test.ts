@@ -321,10 +321,7 @@ const drawingRedirect = {
 
 const drawingDatumContainer: DatumContainer = {
 	article: drawingArticle,
-
 	tags: photoTagsWithoutCollection,
-
 	collection: drawingCollection,
-
 	redirect: drawingRedirect
 }
