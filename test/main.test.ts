@@ -18,8 +18,16 @@ import {StrapiFactory} from "../src/factories/StrapiFactory"
 import {StrapiExporterFactory} from "../src/factories/StrapiExporterFactory"
 import axios, {AxiosInstance} from "axios"
 import {AxiosFactory} from "../src/factories/AxiosFactory"
-import {AssetMigratorFactory} from "../src/types/AssetMigratorFactory"
+import {TumblrAssetMigratorFactory} from "../src/factories/TumblrAssetMigratorFactory"
 import {TumblrAssetMigrator} from "../src/assetMigrators/TumblrAssetMigrator"
+import {
+	SquarespaceAssetMigrator
+} from "../src/assetMigrators/SquarespaceAssetMigrator"
+import {AssetUploader} from "../src/assetMigrators/AssetUploader"
+import {AssetUploaderFactory} from "../src/factories/AssetUploaderFactory"
+import {
+	SquarespaceAssetMigratorFactory
+} from "../src/factories/SquarespaceAssetMigratorFactory"
 
 chai.use(sinonChai)
 chai.use(chaiAsPromised)
@@ -148,17 +156,31 @@ describe("main", () => {
 
 		const buildAxios: AxiosFactory = (_: string) => axios.create()
 
+		const assetUploader = new AssetUploader(axios, fsProxy)
+
+		const buildAssetUploader: AssetUploaderFactory = () => assetUploader
+
 		const tumblrAssetMigrator =
 			new TumblrAssetMigrator(
-				axios,
-				fsProxy,
-				tumblrDirectory
+				tumblrDirectory,
+				assetUploader
 			)
 
 		spy(tumblrAssetMigrator, "migrateAssets")
 
-		const buildTumblrAssetMigrator: AssetMigratorFactory =
+		const buildTumblrAssetMigrator: TumblrAssetMigratorFactory =
 			() => tumblrAssetMigrator
+
+		const squarespaceAssetMigrator = new SquarespaceAssetMigrator(
+			axios,
+			fsProxy,
+			squarespaceFilename,
+			assetUploader
+		)
+
+		spy(squarespaceAssetMigrator, "migrateAssets")
+
+		const buildSquarespaceAssetMigrator: SquarespaceAssetMigratorFactory = () => squarespaceAssetMigrator
 
 		const collateDataContainer: DataContainerCollater =
 			spy(
@@ -197,6 +219,8 @@ describe("main", () => {
 			buildStrapiExporter,
 			buildAxios,
 			buildTumblrAssetMigrator,
+			buildSquarespaceAssetMigrator,
+			buildAssetUploader
 		)
 
 		expect(importSquarespace).to.have.been.calledWith(squarespaceData)
@@ -207,5 +231,6 @@ describe("main", () => {
 			...tumblrDatumContainers,
 		])
 		expect(tumblrAssetMigrator.migrateAssets).to.have.been.calledWith(tumblrArticle)
+		expect(squarespaceAssetMigrator.migrateAssets).to.have.been.calledWith(squarespaceArticle)
 	})
 })

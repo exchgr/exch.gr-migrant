@@ -6,7 +6,8 @@ export const validateArgv = (argv: string[], fsProxy: FsProxy): minimist.ParsedA
 		alias: {
 			s: 'squarespace',
 			t: 'tumblr',
-			r: 'strapi'
+			r: 'strapi',
+			c: 'cacheDirectory'
 		}
 	})
 
@@ -18,6 +19,9 @@ export const validateArgv = (argv: string[], fsProxy: FsProxy): minimist.ParsedA
 
 	if (!fsProxy.existsSync(options.tumblr))
 		throw new Error(`Tumblr archive ${options.tumblr} doesn't exist.`)
+
+	if (fsProxy.readdirSync(options.cacheDirectory).length > 0)
+		throw new Error(`Cache directory ${options.cacheDirectory} isn't empty.`)
 
 	return options
 }

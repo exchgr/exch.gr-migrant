@@ -4,20 +4,18 @@ import FsProxy from "fsProxy"
 import {AssetMigrator} from "assetMigrators/AssetMigrator"
 import {Article} from "types/Article"
 import {promiseSequence} from "../lib/util"
+import {AssetUploader} from "assetMigrators/AssetUploader"
 
 export class TumblrAssetMigrator implements AssetMigrator {
-	private axios: AxiosInstance
-	private fs: FsProxy
 	private directory: string
+	private assetUploader: AssetUploader
 
 	constructor(
-		axios: AxiosInstance,
-		fs: FsProxy,
-		directory: string
+		directory: string,
+		assetUploader: AssetUploader
 	) {
-		this.axios = axios
-		this.fs = fs
 		this.directory = directory
+		this.assetUploader = assetUploader
 	}
 
 	migrateAssets = async (article: Article): Promise<Article> => {
@@ -30,34 +28,13 @@ export class TumblrAssetMigrator implements AssetMigrator {
 		).window.document.body
 
 		await promiseSequence(Array.from(body.querySelectorAll("img"))
-			.map(this._uploadAsset)
+			.map(async (img) =>
+				img.src = await this.assetUploader.uploadAsset(img.src)
+			)
 		)
 
 		article.body = body.innerHTML
 
-		//   for each image:
-		//     1. determine whether file is local or remote (polymorphism)
-		//     2. local: leave it there, but get absolute path.  - DONE AUTOMATICALLY BY JSDOM
-		//     2a. remote: copy it to local cache
-		//     3. upload from location on disk, agnostic of where it is. return: new remote url - DONE
-		//     4. replace img src with new remote url - DONE
-		//     5. remote: delete local copy.
-		//     5a. local: leave intact - DONE
 		return article
-	}
-
-	_uploadAsset = async (img: HTMLImageElement): Promise<HTMLImageElement> => {
-		img.src = (await this.axios.post(
-			"/upload",
-			{
-				files: [this.fs.readFileSync(img.src)]
-			}, {
-				headers: {
-					'Content-Type': 'multipart/form-data'
-				}
-			}
-		)).data.properties.url
-
-		return img
 	}
 }

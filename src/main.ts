@@ -8,8 +8,12 @@ import {DataContainerCollater} from "DataContainerCollater"
 import {ReadTumblrPosts} from "lib/readTumblrPosts"
 import {SquarespaceImporter} from "importers/SquarespaceImporter"
 import {AxiosFactory} from "factories/AxiosFactory"
-import {AssetMigratorFactory} from "types/AssetMigratorFactory"
+import {TumblrAssetMigratorFactory} from "factories/TumblrAssetMigratorFactory"
 import {promiseSequence} from "./lib/util"
+import {
+	SquarespaceAssetMigratorFactory
+} from "factories/SquarespaceAssetMigratorFactory"
+import {AssetUploaderFactory} from "factories/AssetUploaderFactory"
 
 const main = async (
 	argv: string[],
@@ -22,21 +26,43 @@ const main = async (
 	buildStrapi: StrapiFactory,
 	buildStrapiExporter: StrapiExporterFactory,
 	buildAxios: AxiosFactory,
-	buildTumblrAssetMigrator: AssetMigratorFactory
+	buildTumblrAssetMigrator: TumblrAssetMigratorFactory,
+	buildSquarespaceAssetMigrator: SquarespaceAssetMigratorFactory,
+	buildAssetUploader: AssetUploaderFactory
 ) => {
 	const options = validateArgv(argv, fsProxy)
 	const strapi = buildStrapi({ url: options.strapi })
 	const axios = buildAxios(options.strapi)
 	const strapiExporter = buildStrapiExporter(strapi)
-	const tumblrAssetMigrator = buildTumblrAssetMigrator(axios, fsProxy, options.tumblr)
+	const assetUploader = buildAssetUploader(axios, fsProxy)
+
+	const tumblrAssetMigrator = buildTumblrAssetMigrator(
+		options.tumblr,
+		assetUploader
+	)
+
+	const squarespaceAssetMigrator = buildSquarespaceAssetMigrator(
+		axios,
+		fsProxy,
+		options.cacheDirectory,
+		assetUploader
+	)
+
 	const datumContainers: DatumContainer[] = []
 
 	if (options.squarespace) {
-		datumContainers.push.apply(datumContainers, importSquarespace(
-			fsProxy.readFileSync(
-				options.squarespace
-			).toString()
-		))
+		datumContainers.push.apply(
+			datumContainers,
+			await promiseSequence(importSquarespace(
+				fsProxy.readFileSync(
+					options.squarespace
+				).toString()
+			).map(async (datumContainer) => (
+				datumContainer.article = await squarespaceAssetMigrator.migrateAssets(datumContainer.article),
+					datumContainer
+				))
+			)
+		)
 	}
 
 	if (options.tumblr) {

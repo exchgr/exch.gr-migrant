@@ -7,6 +7,8 @@ import {match, stub} from "sinon"
 import {Article} from "../../src/types/Article"
 import moment from "moment"
 import {promiseSequence} from "../../src/lib/util"
+import {AssetUploader} from "../../src/assetMigrators/AssetUploader"
+import * as path from "path"
 
 describe("TumblrAssetMigrator", () => {
 	describe("migrateAssets", () => {
@@ -15,18 +17,30 @@ describe("TumblrAssetMigrator", () => {
 			const fs = new FsProxy()
 			const directory = "/Users/test/tumblr-export/posts/html/"
 
-			const tumblrAssetMigrator = new TumblrAssetMigrator(axiosInstance, fs, directory)
-
 			const essayPubDateString = "January 20th, 2022 9:40pm"
 			const essayPubDate = moment(essayPubDateString, "MMMM Do, YYYY h:mma").toDate()
 			const photoPubDateString = "January 20th, 2020 10:23pm"
 			const photoPubDate = moment(photoPubDateString, "MMMM Do, YYYY h:mma").toDate()
 
-			const oldEssayImg = "<img src=\"../../media/673954189579288576_0.png\" alt=\"\" data-orig-height=\"1200\" data-orig-width=\"600\">"
-			const oldDrawingImg = "<img src=\"../../media/190376479142_0.jpg\" data-orig-height=\"1023\" data-orig-width=\"1243\">"
+			const oldEssayImgFilename =
+				"../../media/673954189579288576_0.png"
+			const oldEssayImg =
+				`<img src="${oldEssayImgFilename}" alt="" data-orig-height="1200" data-orig-width="600">`
 
-			const newEssayImg = '<img src="https://imagedelivery.net/fakeHash_673954189579288576_0/public" alt="" data-orig-height="1200" data-orig-width="600">'
-			const newDrawingImg = '<img src="https://imagedelivery.net/fakeHash_190376479142_0/public" data-orig-height=\"1023\" data-orig-width=\"1243\">'
+			const oldDrawingImgFilename =
+				"../../media/190376479142_0.jpg"
+			const oldDrawingImg =
+				`<img src="${oldDrawingImgFilename}" data-orig-height="1023" data-orig-width="1243">`
+
+			const newEssayImgUrl =
+				"https://imagedelivery.net/fakeHash_673954189579288576_0/public"
+			const newEssayImg =
+				`<img src="${newEssayImgUrl}" alt="" data-orig-height="1200" data-orig-width="600">`
+
+			const newDrawingImgUrl =
+				"https://imagedelivery.net/fakeHash_190376479142_0/public"
+			const newDrawingImg =
+				`<img src="${newDrawingImgUrl}" data-orig-height="1023" data-orig-width="1243">`
 
 			const articles: Article[] = [{
 				title: "Home Audio Evolution, Part 3: UE Boom",
@@ -81,49 +95,22 @@ describe("TumblrAssetMigrator", () => {
 			}]
 
 			const [
-				oldEssayImgElement,
-				oldDrawingImgElement
+				oldEssayImgAbsoluteFilename,
+				oldDrawingImgAbsoluteFilename
 			] = [
-				oldEssayImg,
-				oldDrawingImg
-			].map((element) => (
-				new JSDOM(
-					element,
-					{
-						contentType: "text/html",
-						url: `file://${directory}`
-					}
-				).window.document.querySelector("img")!
+				oldEssayImgFilename,
+				oldDrawingImgFilename
+			].map((filename) => (
+				`file://${path.join(directory, filename)}`
 			))
 
-			const [
-				newEssayImgElement,
-				newDrawingImgElement
-			] =
-				[
-					newEssayImg,
-					newDrawingImg
-				].map((element) =>
-					new JSDOM(
-						element,
-						{
-							contentType: "text/html",
-							url: "https://imagedelivery.net/"
-						}
-					).window.document.querySelector("img")!
-				)
+			const assetUploader = new AssetUploader(axios, fs)
 
-			stub(tumblrAssetMigrator, "_uploadAsset").callsFake(async (img) => {
-				switch (img.src) {
-					case oldEssayImgElement.src:
-						img.src = newEssayImgElement.src
-						break;
-					case oldDrawingImgElement.src:
-						img.src = newDrawingImgElement.src
-						break;
-				}
-				return img
-			})
+			stub(assetUploader, "uploadAsset")
+				.withArgs(oldEssayImgAbsoluteFilename).resolves(newEssayImgUrl)
+				.withArgs(oldDrawingImgAbsoluteFilename).resolves(newDrawingImgUrl)
+
+			const tumblrAssetMigrator = new TumblrAssetMigrator(directory, assetUploader)
 
 			expect(await promiseSequence(
 				articles.map(async (article) =>
@@ -132,54 +119,6 @@ describe("TumblrAssetMigrator", () => {
 			)).to.deep.eq(
 				assetsMigratedArticles
 			)
-		})
-	})
-
-	describe("_uploadAsset", () => {
-		it("should upload a file", async () => {
-			const file = Buffer.from("")
-
-			const axiosInstance = axios.create()
-
-			const newRemoteSrc = "https://imagedelivery.net/fakeHash_190376479142_0/public"
-
-			stub(axiosInstance, "post").withArgs(
-				"/upload",
-				{files: [file]},
-				{
-					headers: {
-						'Content-Type': 'multipart/form-data'
-					}
-				}
-			).resolves({
-				data: {
-					properties: {
-						url: newRemoteSrc
-					}
-				}
-			})
-
-			const directory = "/Users/test/tumblr-export/posts/html/"
-
-			const img = new JSDOM(
-				'<img src="../../media/673954189579288576_0.png" data-orig-height="1023" data-orig-width="1243">',
-				{
-					contentType: "text/html",
-					url: `file://${directory}`
-				}
-			).window.document.querySelector("img")!
-
-			const fs = new FsProxy()
-
-			stub(fs, "readFileSync")
-				.withArgs(`file:///Users/test/tumblr-export/media/673954189579288576_0.png`)
-				.returns(file)
-
-			const tumblrAssetMigrator =
-				new TumblrAssetMigrator(axiosInstance, fs, directory)
-
-			expect((await tumblrAssetMigrator._uploadAsset(img)).src)
-				.to.eq(newRemoteSrc)
 		})
 	})
 })

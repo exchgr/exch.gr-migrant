@@ -1,11 +1,16 @@
 import { AxiosInstance } from "axios";
 import FsProxy from "fsProxy"
 import {TumblrAssetMigrator} from "assetMigrators/TumblrAssetMigrator"
-import {AssetMigratorFactory} from "types/AssetMigratorFactory"
+import {AssetUploader} from "assetMigrators/AssetUploader"
+import {AssetMigrator} from "assetMigrators/AssetMigrator"
 
-export const buildTumblrAssetMigrator: AssetMigratorFactory = (
-	axios: AxiosInstance,
-	fsProxy: FsProxy,
-	directory: string
+export type TumblrAssetMigratorFactory = (
+	directory: string,
+	assetUploader: AssetUploader
+) => AssetMigrator
+
+export const buildTumblrAssetMigrator: TumblrAssetMigratorFactory = (
+	directory: string,
+	assetUploader: AssetUploader
 ) =>
-		new TumblrAssetMigrator(axios, fsProxy, directory)
+		new TumblrAssetMigrator(directory, assetUploader)

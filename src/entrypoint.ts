@@ -9,6 +9,8 @@ import {readTumblrPosts} from "lib/readTumblrPosts"
 import {importTumblr} from "importers/TumblrImporter"
 import {buildAxios} from "factories/AxiosFactory"
 import {buildTumblrAssetMigrator} from "factories/TumblrAssetMigratorFactory"
+import {buildSquarespaceAssetMigrator} from "factories/SquarespaceAssetMigratorFactory"
+import {buildAssetUploader} from "factories/AssetUploaderFactory"
 
 main(
 	process.argv,
@@ -21,5 +23,7 @@ main(
 	buildStrapi,
 	buildStrapiExporter,
 	buildAxios,
-	buildTumblrAssetMigrator
+	buildTumblrAssetMigrator,
+	buildSquarespaceAssetMigrator,
+	buildAssetUploader
 )

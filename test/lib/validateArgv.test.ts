@@ -48,14 +48,40 @@ describe("validateArgv", () => {
 		expect(() => validateArgv(argv, fsProxy)).to.throw(`Tumblr archive ${tumblrDirectory} doesn't exist.`)
 	})
 
-	it("should return valid options", () => {
+	it("should fail with an occupied cache directory", () => {
 		const squarespaceFilename = 'resources/Squarespace-Wordpress-Export-10-12-2023.xml'
-		const tumblrDirectory = "where"
+		const tumblrDirectory = "nowhere"
+		const cacheDir = "/Users/test/cacheDir/"
 
 		const argv = [
 			'-s', squarespaceFilename,
 			'-t', tumblrDirectory,
-			'-r', strapiUrl
+			'-r', strapiUrl,
+			'-c', cacheDir
+		]
+
+		const fsProxy = new FsProxy()
+
+		stub(fsProxy, "existsSync")
+			.withArgs(squarespaceFilename).returns(true)
+			.withArgs(tumblrDirectory).returns(true)
+
+		stub(fsProxy, "readdirSync")
+			.withArgs(cacheDir).returns(["really important file.jpg"])
+
+		expect(() => validateArgv(argv, fsProxy)).to.throw(`Cache directory ${cacheDir} isn't empty.`)
+	})
+
+	it("should return valid options", () => {
+		const squarespaceFilename = 'resources/Squarespace-Wordpress-Export-10-12-2023.xml'
+		const tumblrDirectory = "where"
+		const cacheDir = "/Users/test/cacheDir/"
+
+		const argv = [
+			'-s', squarespaceFilename,
+			'-t', tumblrDirectory,
+			'-r', strapiUrl,
+			'-c', cacheDir
 		]
 
 		const options = {
@@ -65,7 +91,9 @@ describe("validateArgv", () => {
 			"t": tumblrDirectory,
 			"tumblr": tumblrDirectory,
 			"r": strapiUrl,
-			"strapi": strapiUrl
+			"strapi": strapiUrl,
+			"c": cacheDir,
+			"cacheDirectory": cacheDir
 		}
 
 		const fsProxy = new FsProxy()
@@ -73,6 +101,9 @@ describe("validateArgv", () => {
 		stub(fsProxy, "existsSync")
 			.withArgs(squarespaceFilename).returns(true)
 			.withArgs(tumblrDirectory).returns(true)
+
+		stub(fsProxy, "readdirSync")
+			.withArgs(cacheDir).returns([])
 
 		expect(validateArgv(argv, fsProxy)).to.deep.eq(options)
 	})
