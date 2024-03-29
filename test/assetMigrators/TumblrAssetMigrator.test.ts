@@ -1,9 +1,8 @@
-import {JSDOM} from "jsdom"
 import axios from "axios"
 import {TumblrAssetMigrator} from "../../src/assetMigrators/TumblrAssetMigrator"
 import FsProxy from "../../src/fsProxy"
 import {expect} from "chai"
-import {match, stub} from "sinon"
+import {stub} from "sinon"
 import {Article} from "../../src/types/Article"
 import moment from "moment"
 import {promiseSequence} from "../../src/lib/util"
@@ -16,6 +15,7 @@ describe("TumblrAssetMigrator", () => {
 			const axiosInstance = axios.create()
 			const fs = new FsProxy()
 			const directory = "/Users/test/tumblr-export/posts/html/"
+			const strapiToken = "apiToken"
 
 			const essayPubDateString = "January 20th, 2022 9:40pm"
 			const essayPubDate = moment(essayPubDateString, "MMMM Do, YYYY h:mma").toDate()
@@ -104,7 +104,11 @@ describe("TumblrAssetMigrator", () => {
 				`file://${path.join(directory, filename)}`
 			))
 
-			const assetUploader = new AssetUploader(axios, fs)
+			const assetUploader = new AssetUploader(
+				axiosInstance,
+				fs,
+				strapiToken
+			)
 
 			stub(assetUploader, "uploadAsset")
 				.withArgs(oldEssayImgAbsoluteFilename).resolves(newEssayImgUrl)

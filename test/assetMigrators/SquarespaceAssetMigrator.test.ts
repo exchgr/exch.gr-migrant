@@ -13,6 +13,8 @@ import {stub} from "sinon"
 import {AssetUploader} from "../../src/assetMigrators/AssetUploader"
 
 describe("SquarespaceAssetMigrator", () => {
+	const strapiToken = "apiToken"
+
 	const stackedImgFilename = "hoa+2022-07-23-1.jpg"
 
 	const stackedImgSrc = `https://images.squarespace-cdn.com/content/v1/60de1fd01dfb800542323787/1672611472922-K36P4V3NZV47SLX5Z94A/${stackedImgFilename}`
@@ -126,7 +128,7 @@ describe("SquarespaceAssetMigrator", () => {
 				og_type: "article",
 			}]
 
-			const assetUploader = new AssetUploader(axiosInstance, fsProxy)
+			const assetUploader = new AssetUploader(axiosInstance, fsProxy, strapiToken)
 
 			stub(assetUploader, "uploadAsset")
 				.withArgs(cachedHoaFilename).resolves(newHoaImgUrl)
@@ -175,7 +177,7 @@ describe("SquarespaceAssetMigrator", () => {
 				const axiosInstance = axios.create()
 				const fsProxy = new FsProxy()
 				const cacheDir = "/Users/test/cacheDir/"
-				const assetUploader = new AssetUploader(axiosInstance, fsProxy)
+				const assetUploader = new AssetUploader(axiosInstance, fsProxy, strapiToken)
 				const filename = "hoa+2022-07-23-1.jpg"
 				const cachedPath = `${cacheDir}${filename}`
 
@@ -238,7 +240,7 @@ describe("SquarespaceAssetMigrator", () => {
 				stub(fsProxy, "writeFileSync")
 					.withArgs(cachedPath, data)
 
-				const assetUploader = new AssetUploader(axiosInstance, fsProxy)
+				const assetUploader = new AssetUploader(axiosInstance, fsProxy, strapiToken)
 
 				const squarespaceAssetMigrator = new SquarespaceAssetMigrator(axiosInstance, fsProxy, cacheDir, assetUploader)
 

@@ -16,9 +16,11 @@ import {SquarespaceImporter} from "../src/importers/SquarespaceImporter"
 import {TumblrImporter} from "../src/importers/TumblrImporter"
 import {StrapiFactory} from "../src/factories/StrapiFactory"
 import {StrapiExporterFactory} from "../src/factories/StrapiExporterFactory"
-import axios, {AxiosInstance} from "axios"
+import axios from "axios"
 import {AxiosFactory} from "../src/factories/AxiosFactory"
-import {TumblrAssetMigratorFactory} from "../src/factories/TumblrAssetMigratorFactory"
+import {
+	TumblrAssetMigratorFactory
+} from "../src/factories/TumblrAssetMigratorFactory"
 import {TumblrAssetMigrator} from "../src/assetMigrators/TumblrAssetMigrator"
 import {
 	SquarespaceAssetMigrator
@@ -28,6 +30,8 @@ import {AssetUploaderFactory} from "../src/factories/AssetUploaderFactory"
 import {
 	SquarespaceAssetMigratorFactory
 } from "../src/factories/SquarespaceAssetMigratorFactory"
+import readline from "readline/promises"
+import {stdin, stdout} from "process"
 
 chai.use(sinonChai)
 chai.use(chaiAsPromised)
@@ -47,6 +51,18 @@ describe("main", () => {
 			'-t', tumblrDirectory,
 			'-r', strapiUrl
 		]
+
+		const rl = readline.createInterface({
+			input: stdin,
+			output: stdout
+		})
+
+		const strapiToken = "apiToken"
+
+		stub(rl, "question")
+			.withArgs(`1. Go to ${strapiUrl}/admin/settings/api-tokens
+2. Create an API token
+3. Paste the API token here and press [return]: `).resolves(strapiToken)
 
 		const pubDate = new Date()
 
@@ -154,9 +170,14 @@ describe("main", () => {
 			redirectArticles: {}
 		}
 
-		const buildAxios: AxiosFactory = (_: string) => axios.create()
+		const axiosInstance = axios.create()
+		const buildAxios: AxiosFactory = (_: string) => axiosInstance
 
-		const assetUploader = new AssetUploader(axios, fsProxy)
+		const assetUploader = new AssetUploader(
+			axiosInstance,
+			fsProxy,
+			strapiToken
+		)
 
 		const buildAssetUploader: AssetUploaderFactory = () => assetUploader
 
@@ -172,7 +193,7 @@ describe("main", () => {
 			() => tumblrAssetMigrator
 
 		const squarespaceAssetMigrator = new SquarespaceAssetMigrator(
-			axios,
+			axiosInstance,
 			fsProxy,
 			squarespaceFilename,
 			assetUploader
@@ -188,6 +209,8 @@ describe("main", () => {
 			)
 
 		const strapi = new Strapi({ url: strapiUrl })
+		spy(strapi, "setToken")
+
 		const buildStrapi: StrapiFactory = (_strapiOptions: StrapiOptions) => strapi
 
 		const strapiExporter = new StrapiExporter(strapi)
@@ -211,6 +234,7 @@ describe("main", () => {
 			argv,
 			fakeValidate,
 			fsProxy,
+			rl,
 			importSquarespace,
 			readTumblrPosts,
 			importTumblr,
@@ -223,6 +247,7 @@ describe("main", () => {
 			buildAssetUploader
 		)
 
+		expect(strapi.setToken).to.have.been.calledWith(strapiToken)
 		expect(importSquarespace).to.have.been.calledWith(squarespaceData)
 		expect(importTumblr).to.have.been.calledWith(tumblrPosts)
 		expect(strapiExporter.export).to.have.been.calledWith(dataContainer)

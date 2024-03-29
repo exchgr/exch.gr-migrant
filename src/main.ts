@@ -14,11 +14,13 @@ import {
 	SquarespaceAssetMigratorFactory
 } from "factories/SquarespaceAssetMigratorFactory"
 import {AssetUploaderFactory} from "factories/AssetUploaderFactory"
+import readline from "readline/promises"
 
 const main = async (
 	argv: string[],
 	validateArgv: ValidateArgv,
 	fsProxy: FsProxy,
+	rl: readline.Interface,
 	importSquarespace: SquarespaceImporter,
 	readTumblrPosts: ReadTumblrPosts,
 	importTumblr: TumblrImporter,
@@ -31,10 +33,17 @@ const main = async (
 	buildAssetUploader: AssetUploaderFactory
 ) => {
 	const options = validateArgv(argv, fsProxy)
+
+	const strapiToken = await rl.question(`1. Go to ${options.strapi}/admin/settings/api-tokens
+2. Create an API token
+3. Paste the API token here and press [return]: `)
+
 	const strapi = buildStrapi({ url: options.strapi })
+	strapi.setToken(strapiToken)
+
 	const axios = buildAxios(options.strapi)
 	const strapiExporter = buildStrapiExporter(strapi)
-	const assetUploader = buildAssetUploader(axios, fsProxy)
+	const assetUploader = buildAssetUploader(axios, fsProxy, strapiToken)
 
 	const tumblrAssetMigrator = buildTumblrAssetMigrator(
 		options.tumblr,

@@ -10,13 +10,15 @@ describe("_uploadAsset", () => {
 		const file = Buffer.from("hello")
 		const axiosInstance = axios.create()
 		const url = "https://imagedelivery.net/fakeHash_190376479142_0/public"
+		const strapiToken = "apiToken"
 
 		stub(axiosInstance, "post").withArgs(
 			"/upload",
 			{files: [file]},
 			{
 				headers: {
-					'Content-Type': 'multipart/form-data'
+					'Content-Type': 'multipart/form-data',
+					'Authorization': `bearer ${strapiToken}`
 				}
 			}
 		).resolves({data: {properties: {url}}})
@@ -28,7 +30,7 @@ describe("_uploadAsset", () => {
 		stub(fs, "readFileSync").withArgs(filename).returns(file)
 
 		const assetUploader =
-			new AssetUploader(axiosInstance, fs)
+			new AssetUploader(axiosInstance, fs, strapiToken)
 
 		expect((await assetUploader.uploadAsset(filename)))
 			.to.eq(url)
