@@ -1,38 +1,64 @@
-import {JSDOM} from "jsdom"
 import FsProxy from "../../src/fsProxy"
-import {stub} from "sinon"
-import {AssetUploader} from "../../src/assetMigrators/AssetUploader"
-import axios from "axios"
-import { expect } from "chai"
+import {createStubInstance, stub} from "sinon"
+import {AssetUploader, _sanitizePath} from "../../src/assetMigrators/AssetUploader"
+import {expect} from "chai"
+import {objectToFormData} from "../../src/lib/util"
+import {URL} from "url"
 
 describe("_uploadAsset", () => {
 	it("should upload a file", async () => {
-		const file = Buffer.from("hello")
-		const axiosInstance = axios.create()
+		const filename = "673954189579288576_0.png"
+		const filePath = `/Users/test/tumblr-export/media/${filename}`
+		const fileUrl = `file://${filePath}`
+		const file = new Blob(["hi"])
+
+		const strapi = "http://localhost:1337"
 		const url = "https://imagedelivery.net/fakeHash_190376479142_0/public"
 		const strapiToken = "apiToken"
+		const response = {
+			ok: true,
+			json: async () => [{url}]
+		}
 
-		stub(axiosInstance, "post").withArgs(
-			"/api/upload",
-			{files: [file]},
-			{
-				headers: {
-					'Content-Type': 'multipart/form-data',
-					'Authorization': `bearer ${strapiToken}`
+		const fetche = stub()
+			.withArgs(
+				new URL("/api/upload", strapi),
+				{
+					method: 'post',
+					body: objectToFormData({files: {file, filename}}),
+					headers: {'Authorization': `bearer ${strapiToken}`}
 				}
-			}
-		).resolves({data: {properties: {url}}})
+			).resolves(response)
 
-		const filename = "file:///Users/test/tumblr-export/media/673954189579288576_0.png"
+		const fsProxy = new FsProxy()
+		stub(fsProxy, "openAsBlob").withArgs(filePath).resolves(file)
 
-		const fs = new FsProxy()
+		const assetUploader = new AssetUploader(
+			strapi,
+			fetche,
+			fsProxy,
+			strapiToken
+		)
 
-		stub(fs, "readFileSync").withArgs(filename).returns(file)
-
-		const assetUploader =
-			new AssetUploader(axiosInstance, fs, strapiToken)
-
-		expect((await assetUploader.uploadAsset(filename)))
+		expect((await assetUploader.uploadAsset(fileUrl)))
 			.to.eq(url)
+	})
+
+	describe("_sanitizePath", () => {
+		it("should convert a file:// path to a regular path", () => {
+			const filePath =
+				`/Users/test/tumblr-export/media/673954189579288576_0.png`
+
+			const fileUrl = `file://${filePath}`
+
+			expect(_sanitizePath(fileUrl)).to.eq(filePath)
+		})
+
+		it("should do nothing to a regular path", () => {
+			const filePath =
+				`/Users/test/tumblr-export/media/673954189579288576_0.png`
+
+			expect(_sanitizePath(filePath)).to.eq(filePath)
+		})
 	})
 })

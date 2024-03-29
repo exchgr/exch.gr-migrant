@@ -1,26 +1,25 @@
 import {JSDOM} from "jsdom"
-import {AxiosInstance} from "axios"
 import FsProxy from "fsProxy"
 import {Article} from "types/Article"
-import {promiseSequence} from "../lib/util"
+import {syncMap} from "../lib/util"
 import * as path from "path"
 import {URL} from "url"
 import {AssetUploader} from "assetMigrators/AssetUploader"
 import {AssetMigrator} from "assetMigrators/AssetMigrator"
 
 export class SquarespaceAssetMigrator implements AssetMigrator {
-	private axios: AxiosInstance
+	private fetch: typeof fetch
 	private fs: FsProxy
 	private cacheDir: string
 	private assetUploader: AssetUploader
 
 	constructor(
-		axios: AxiosInstance,
+		fetche: typeof fetch,
 		fs: FsProxy,
 		cacheDir: string,
 		assetUploader: AssetUploader
 	) {
-		this.axios = axios
+		this.fetch = fetche
 		this.fs = fs
 		this.cacheDir = cacheDir
 		this.assetUploader = assetUploader
@@ -60,35 +59,35 @@ export class SquarespaceAssetMigrator implements AssetMigrator {
 		galleryClass: string,
 		galleryItemGetter: (img: HTMLImageElement) => string
 	) => {
-		await promiseSequence(Array.from(
-			body.querySelectorAll(gallerySelector)
-		).map(async (gallery) => {
-			const galleryItems = (await promiseSequence(
-				Array.from(
-					gallery.querySelectorAll<HTMLImageElement>("noscript img")
-				).map(async (img) => {
-					const cachedPath = await this._downloadAsset(img.src)
-					img.src = await this.assetUploader.uploadAsset(cachedPath)
-					this.fs.unlinkSync(cachedPath)
-					return img
-				})
-			)).map(galleryItemGetter).join("\n")
+		await syncMap(
+			Array.from(body.querySelectorAll(gallerySelector)),
+			async (gallery) => {
+				const galleryItems = (await syncMap(
+					Array.from(gallery.querySelectorAll<HTMLImageElement>("noscript img")),
+					async (img) => {
+						const cachedPath = await this._downloadAsset(img.src)
+						img.src = await this.assetUploader.uploadAsset(cachedPath)
+						this.fs.unlinkSync(cachedPath)
+						return img
+					}
+				)).map(galleryItemGetter).join("\n")
 
-			gallery.outerHTML = `<div class="${galleryClass}">
+				gallery.outerHTML = `<div class="${galleryClass}">
 	${galleryItems}
 </div>`
-		}))
+			}
+		)
 	}
 
 	_downloadAsset = async (url: string): Promise<string> => {
 		const cachedPath = path.join(
 			this.cacheDir,
 			path.parse(new URL(url).pathname).base
-		);
+		)
 
 		this.fs.writeFileSync(
 			cachedPath,
-			(await this.axios.get(url, { responseType: 'arraybuffer' })).data
+			Buffer.from(await (await this.fetch(url)).arrayBuffer())
 		)
 
 		return cachedPath

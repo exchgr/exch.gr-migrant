@@ -107,4 +107,59 @@ describe("validateArgv", () => {
 
 		expect(validateArgv(argv, fsProxy)).to.deep.eq(options)
 	})
+
+	it("should not require all importers at once", () => {
+		const squarespaceFilename = 'resources/Squarespace-Wordpress-Export-10-12-2023.xml'
+		const cacheDir = "/Users/test/cacheDir/"
+
+		const argv = [
+			'-s', squarespaceFilename,
+			'-r', strapiUrl,
+			'-c', cacheDir
+		]
+
+		const options = {
+			"_": [],
+			"s": squarespaceFilename,
+			"squarespace": squarespaceFilename,
+			"r": strapiUrl,
+			"strapi": strapiUrl,
+			"c": cacheDir,
+			"cacheDirectory": cacheDir
+		}
+
+		const fsProxy = new FsProxy()
+
+		stub(fsProxy, "existsSync")
+			.withArgs(squarespaceFilename).returns(true)
+
+		stub(fsProxy, "readdirSync")
+			.withArgs(cacheDir).returns([])
+
+		expect(validateArgv(argv, fsProxy)).to.deep.eq(options)
+	})
+
+	it("should require at least one importer", () => {
+		const cacheDir = "/Users/test/cacheDir/"
+
+		const argv = [
+			'-r', strapiUrl,
+			'-c', cacheDir
+		]
+
+		const options = {
+			"_": [],
+			"r": strapiUrl,
+			"strapi": strapiUrl,
+			"c": cacheDir,
+			"cacheDirectory": cacheDir
+		}
+
+		const fsProxy = new FsProxy()
+
+		expect(() => validateArgv(argv, fsProxy)).to.throw(
+`No importers specified. Please check your command line arguments.
+For more information, see the README or run this command with -h.`
+		)
+	})
 })

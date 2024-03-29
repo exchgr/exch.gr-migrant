@@ -12,7 +12,6 @@ import {
 } from "../../src/importers/SquarespaceImporter"
 import {JSDOM} from "jsdom"
 import {Article} from "../../src/types/Article"
-import {Tag} from "../../src/types/Tag"
 import {DatumContainer} from "../../src/types/DatumContainer"
 
 const pubDate = new Date("Mon, 02 Jan 2023 01:08:58 +0000")
@@ -93,9 +92,7 @@ describe("_constructArticle", () => {
 
 		const pubDate = new Date("Mon, 02 Jan 2023 01:08:58 +0000");
 
-		const expectedArticle: Article = socialMediaArticle
-
-		expect(_constructArticle(item)).to.deep.eq(expectedArticle)
+		expect(_constructArticle(item)).to.deep.eq(socialMediaArticle)
 	})
 })
 
@@ -164,7 +161,7 @@ describe("_constructRedirect", () => {
 
 const socialMediaArticle = {
 	title: "Rethinking Social Media in 2023: A New Home for my Photos // House of Abundance: Stoop Edition",
-	body: "this is a post",
+	body: "<div>this is a post</div>",
 	createdAt: pubDate,
 	publishedAt: pubDate,
 	updatedAt: pubDate,
@@ -220,7 +217,7 @@ const socialMediaDatumContainer = {
 const anotherPostDatumContainer = {
 	article: {
 		title: "Another post",
-		body: "Another post",
+		body: "<div>Another post</div>",
 		createdAt: pubDate2,
 		publishedAt: pubDate2,
 		updatedAt: pubDate2,
@@ -293,7 +290,7 @@ const AnotherPostCategoriesXmlFragment = anotherPostCategoryData.map(categoryXml
 const socialMediaPostXmlFragment = `<item>
             <title>Rethinking Social Media in 2023: A New Home for my Photos // House of Abundance: Stoop Edition</title>
             <link>/fotoblog/rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23</link>
-            <content:encoded><![CDATA[<article>this is a post</article>]]></content:encoded>
+            <content:encoded><![CDATA[<div>this is a post</div>]]></content:encoded>
             <excerpt:encoded />
             <wp:post_name>rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23</wp:post_name>
             <wp:post_type>post</wp:post_type>
@@ -318,7 +315,7 @@ ${postamble}`
 const AnotherPostXmlFragment = `<item>
             <title>Another post</title>
             <link>/fotoblog/another-post-2023-12-22</link>
-            <content:encoded><![CDATA[<article>Another post</article>]]></content:encoded>
+            <content:encoded><![CDATA[<div>Another post</div>]]></content:encoded>
             <excerpt:encoded />
             <wp:post_name>another-post-2023-12-22</wp:post_name>
             <wp:post_type>post</wp:post_type>
@@ -339,7 +336,7 @@ const AnotherPostXmlFragment = `<item>
 const draftPostXmlFragment = `<item>
             <title>DRAFT: Rethinking Social Media in 2023: A New Home for my Photos // House of Abundance: Stoop Edition</title>
             <link>/fotoblog/rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23</link>
-            <content:encoded><![CDATA[<article>this is a post</article>]]></content:encoded>
+            <content:encoded><![CDATA[this is a post]]></content:encoded>
             <excerpt:encoded />
             <wp:post_name>rethinking-social-media-in-2023-a-new-home-for-my-photos-house-of-abundance-2022-07-23</wp:post_name>
             <wp:post_type>post</wp:post_type>

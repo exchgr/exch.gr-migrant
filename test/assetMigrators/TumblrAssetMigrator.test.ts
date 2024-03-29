@@ -1,18 +1,16 @@
-import axios from "axios"
 import {TumblrAssetMigrator} from "../../src/assetMigrators/TumblrAssetMigrator"
 import FsProxy from "../../src/fsProxy"
 import {expect} from "chai"
 import {stub} from "sinon"
 import {Article} from "../../src/types/Article"
 import moment from "moment"
-import {promiseSequence} from "../../src/lib/util"
+import {syncMap} from "../../src/lib/util"
 import {AssetUploader} from "../../src/assetMigrators/AssetUploader"
 import * as path from "path"
 
 describe("TumblrAssetMigrator", () => {
 	describe("migrateAssets", () => {
 		it("should migrate assets to strapi", async () => {
-			const axiosInstance = axios.create()
 			const fs = new FsProxy()
 			const directory = "/Users/test/tumblr-export/posts/html/"
 			const strapiToken = "apiToken"
@@ -104,8 +102,12 @@ describe("TumblrAssetMigrator", () => {
 				`file://${path.join(directory, filename)}`
 			))
 
+			const strapiUrl = "http://localhost:1337"
+			const fetche = stub()
+
 			const assetUploader = new AssetUploader(
-				axiosInstance,
+				strapiUrl,
+				fetche,
 				fs,
 				strapiToken
 			)
@@ -116,13 +118,9 @@ describe("TumblrAssetMigrator", () => {
 
 			const tumblrAssetMigrator = new TumblrAssetMigrator(directory, assetUploader)
 
-			expect(await promiseSequence(
-				articles.map(async (article) =>
-					tumblrAssetMigrator.migrateAssets(article)
-				)
-			)).to.deep.eq(
-				assetsMigratedArticles
-			)
+			expect(
+				await syncMap(articles, tumblrAssetMigrator.migrateAssets)
+			).to.deep.eq(assetsMigratedArticles)
 		})
 	})
 })

@@ -1,8 +1,6 @@
-import { AxiosInstance } from "axios";
-import FsProxy from "fsProxy"
-import {TumblrAssetMigrator} from "assetMigrators/TumblrAssetMigrator"
-import {AssetUploader} from "assetMigrators/AssetUploader"
-import {AssetMigrator} from "assetMigrators/AssetMigrator"
+import {TumblrAssetMigrator} from "../assetMigrators/TumblrAssetMigrator"
+import {AssetUploader} from "../assetMigrators/AssetUploader"
+import {AssetMigrator} from "../assetMigrators/AssetMigrator"
 
 export type TumblrAssetMigratorFactory = (
 	directory: string,

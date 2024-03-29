@@ -5,7 +5,6 @@ import {spy, stub} from "sinon"
 import sinonChai from "sinon-chai"
 import chaiAsPromised from "chai-as-promised"
 import FsProxy from "../src/fsProxy"
-import Strapi, {StrapiOptions} from "strapi-sdk-js"
 import {StrapiExporter} from "../src/exporters/StrapiExporter"
 import {DataContainer} from "../src/types/DataContainer"
 import {ValidateArgv} from "../src/lib/validateArgv"
@@ -14,10 +13,7 @@ import {DataContainerCollater} from "../src/DataContainerCollater"
 import {TumblrPost} from "../src/types/TumblrPost"
 import {SquarespaceImporter} from "../src/importers/SquarespaceImporter"
 import {TumblrImporter} from "../src/importers/TumblrImporter"
-import {StrapiFactory} from "../src/factories/StrapiFactory"
 import {StrapiExporterFactory} from "../src/factories/StrapiExporterFactory"
-import axios from "axios"
-import {AxiosFactory} from "../src/factories/AxiosFactory"
 import {
 	TumblrAssetMigratorFactory
 } from "../src/factories/TumblrAssetMigratorFactory"
@@ -170,11 +166,11 @@ describe("main", () => {
 			redirectArticles: {}
 		}
 
-		const axiosInstance = axios.create()
-		const buildAxios: AxiosFactory = (_: string) => axiosInstance
+		const fetche = stub()
 
 		const assetUploader = new AssetUploader(
-			axiosInstance,
+			strapiUrl,
+			fetche,
 			fsProxy,
 			strapiToken
 		)
@@ -193,8 +189,8 @@ describe("main", () => {
 			() => tumblrAssetMigrator
 
 		const squarespaceAssetMigrator = new SquarespaceAssetMigrator(
-			axiosInstance,
-			fsProxy,
+			fetche,
+ 			fsProxy,
 			squarespaceFilename,
 			assetUploader
 		)
@@ -208,13 +204,8 @@ describe("main", () => {
 				(_datumContainers: DatumContainer[]): DataContainer => dataContainer
 			)
 
-		const strapi = new Strapi({ url: strapiUrl })
-		spy(strapi, "setToken")
-
-		const buildStrapi: StrapiFactory = (_strapiOptions: StrapiOptions) => strapi
-
-		const strapiExporter = new StrapiExporter(strapi)
-		const buildStrapiExporter: StrapiExporterFactory = (_: Strapi) => strapiExporter
+		const strapiExporter = new StrapiExporter(fetche, strapiUrl, strapiToken)
+		const buildStrapiExporter: StrapiExporterFactory = () => strapiExporter
 
 		stub(strapiExporter, "export").withArgs(dataContainer).resolves([])
 
@@ -239,15 +230,12 @@ describe("main", () => {
 			readTumblrPosts,
 			importTumblr,
 			collateDataContainer,
-			buildStrapi,
 			buildStrapiExporter,
-			buildAxios,
 			buildTumblrAssetMigrator,
 			buildSquarespaceAssetMigrator,
 			buildAssetUploader
 		)
 
-		expect(strapi.setToken).to.have.been.calledWith(strapiToken)
 		expect(importSquarespace).to.have.been.calledWith(squarespaceData)
 		expect(importTumblr).to.have.been.calledWith(tumblrPosts)
 		expect(strapiExporter.export).to.have.been.calledWith(dataContainer)

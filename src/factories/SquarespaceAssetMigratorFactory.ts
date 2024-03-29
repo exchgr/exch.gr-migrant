@@ -1,20 +1,20 @@
-import {SquarespaceAssetMigrator} from "assetMigrators/SquarespaceAssetMigrator"
+import {
+	SquarespaceAssetMigrator
+} from "../assetMigrators/SquarespaceAssetMigrator"
 import FsProxy from "fsProxy"
-import {AssetMigrator} from "assetMigrators/AssetMigrator"
-import {AxiosInstance} from "axios"
 import {AssetUploader} from "assetMigrators/AssetUploader"
 
 export type SquarespaceAssetMigratorFactory = (
-	axios: AxiosInstance,
+	fetche: typeof fetch,
 	fsProxy: FsProxy,
 	directory: string,
 	assetUploader: AssetUploader
 ) => SquarespaceAssetMigrator
 
 export const buildSquarespaceAssetMigrator: SquarespaceAssetMigratorFactory = (
-	axios,
+	fetche,
 	fsProxy,
 	filename,
 	assetUploader
 ) =>
-	new	SquarespaceAssetMigrator(axios, fsProxy, filename, assetUploader)
+	new	SquarespaceAssetMigrator(fetche, fsProxy, filename, assetUploader)

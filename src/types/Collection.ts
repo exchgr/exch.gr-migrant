@@ -1,5 +1,9 @@
 export type Collection = {
 	name: string
 	slug: string
-	articles?: number[]
+	articles?: {
+		connect?: number[],
+		disconnect?: number[],
+		set?: number[]
+	}
 }

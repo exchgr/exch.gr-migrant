@@ -6,15 +6,14 @@ import {
 	SquarespaceAssetMigrator
 } from "../../src/assetMigrators/SquarespaceAssetMigrator"
 import FsProxy from "../../src/fsProxy"
-import {promiseSequence} from "../../src/lib/util"
-import axios from "axios"
+import {syncMap} from "../../src/lib/util"
 import {Article} from "../../src/types/Article"
-import {stub} from "sinon"
+import {createStubInstance, stub} from "sinon"
 import {AssetUploader} from "../../src/assetMigrators/AssetUploader"
 
 describe("SquarespaceAssetMigrator", () => {
+	const strapiUrl = "http://localhost:1337"
 	const strapiToken = "apiToken"
-
 	const stackedImgFilename = "hoa+2022-07-23-1.jpg"
 
 	const stackedImgSrc = `https://images.squarespace-cdn.com/content/v1/60de1fd01dfb800542323787/1672611472922-K36P4V3NZV47SLX5Z94A/${stackedImgFilename}`
@@ -37,7 +36,6 @@ describe("SquarespaceAssetMigrator", () => {
 
 	describe("migrateAssets", () => {
 		it("should migrate assets to strapi", async () => {
-			const axiosInstance = axios.create()
 			const fsProxy = new FsProxy()
 			const cacheDir = "/Users/test/cacheDir/"
 
@@ -128,14 +126,15 @@ describe("SquarespaceAssetMigrator", () => {
 				og_type: "article",
 			}]
 
-			const assetUploader = new AssetUploader(axiosInstance, fsProxy, strapiToken)
+			const fetche = stub()
+			const assetUploader = new AssetUploader(strapiUrl, fetche, fsProxy, strapiToken)
 
 			stub(assetUploader, "uploadAsset")
 				.withArgs(cachedHoaFilename).resolves(newHoaImgUrl)
 				.withArgs(cachedEyeOfSauronFilename).resolves(newEyeOfSauronUrl)
 
 			const squarespaceAssetMigrator =
-				new SquarespaceAssetMigrator(axiosInstance, fsProxy, cacheDir, assetUploader)
+				new SquarespaceAssetMigrator(fetche, fsProxy, cacheDir, assetUploader)
 
 			stub(squarespaceAssetMigrator, "_downloadAsset")
 				.withArgs(stackedImgSrc).resolves(cachedHoaFilename)
@@ -145,11 +144,9 @@ describe("SquarespaceAssetMigrator", () => {
 				.withArgs(cachedHoaFilename).returns(undefined)
 				.withArgs(cachedEyeOfSauronFilename).returns(undefined)
 
-			expect(await promiseSequence(
-				articles.map((article) =>
-					squarespaceAssetMigrator.migrateAssets(article)
-				)
-			)).to.deep.eq(assetsMigratedArticles)
+			expect(
+				await syncMap(articles, squarespaceAssetMigrator.migrateAssets)
+			).to.deep.eq(assetsMigratedArticles)
 		})
 	})
 
@@ -174,10 +171,10 @@ describe("SquarespaceAssetMigrator", () => {
 					}
 				).window.document
 
-				const axiosInstance = axios.create()
+				const fetche = stub()
 				const fsProxy = new FsProxy()
 				const cacheDir = "/Users/test/cacheDir/"
-				const assetUploader = new AssetUploader(axiosInstance, fsProxy, strapiToken)
+				const assetUploader = new AssetUploader(strapiUrl, fetche, fsProxy, strapiToken)
 				const filename = "hoa+2022-07-23-1.jpg"
 				const cachedPath = `${cacheDir}${filename}`
 
@@ -186,7 +183,7 @@ describe("SquarespaceAssetMigrator", () => {
 					.resolves(newHoaImgUrl)
 
 				const squarespaceAssetMigrator =
-					new SquarespaceAssetMigrator(axiosInstance, fsProxy, cacheDir, assetUploader)
+					new SquarespaceAssetMigrator(fetche, fsProxy, cacheDir, assetUploader)
 
 				stub(squarespaceAssetMigrator, "_downloadAsset")
 					.withArgs(stackedImgSrc).resolves(cachedPath)
@@ -227,22 +224,23 @@ describe("SquarespaceAssetMigrator", () => {
 				const squarespaceImgUrl =
 					`https://images.squarespace-cdn.com/content/v1/60de1fd01dfb800542323787/1672611472922-K36P4V3NZV47SLX5Z94A/${filename}`
 
-				const axiosInstance = axios.create()
-
 				const data = "data"
-
-				stub(axiosInstance, "get")
-					.withArgs(squarespaceImgUrl)
-					.resolves({data})
 
 				const fsProxy = new FsProxy()
 
 				stub(fsProxy, "writeFileSync")
 					.withArgs(cachedPath, data)
 
-				const assetUploader = new AssetUploader(axiosInstance, fsProxy, strapiToken)
+				const response = createStubInstance(Response)
 
-				const squarespaceAssetMigrator = new SquarespaceAssetMigrator(axiosInstance, fsProxy, cacheDir, assetUploader)
+				const fetche = stub()
+					.withArgs(squarespaceImgUrl).resolves(response)
+
+				response.arrayBuffer.resolves(new TextEncoder().encode(JSON.stringify({data})).buffer)
+
+				const assetUploader = new AssetUploader(strapiUrl, fetche, fsProxy, strapiToken)
+
+				const squarespaceAssetMigrator = new SquarespaceAssetMigrator(fetche, fsProxy, cacheDir, assetUploader)
 
 				expect(await squarespaceAssetMigrator._downloadAsset(
 				squarespaceImgUrl

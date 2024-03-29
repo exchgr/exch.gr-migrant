@@ -38,7 +38,7 @@ export const _textToDatumContainer = (post: TumblrPost): DatumContainer => ({
 export const _sanitizeBody = (id: string, body: Element) => {
 	Array.from(body.querySelectorAll("img")).forEach(
 		(img, index) => {
-			img.src = `../../media/${id}_${index}${img.src.match(/\.[^.]+$/)![0]}`
+			img.src = `../media/${id}_${index}${img.src.match(/\.[^.]+$/)![0]}`
 			img.removeAttribute("srcset")
 			img.removeAttribute("sizes")
 		})

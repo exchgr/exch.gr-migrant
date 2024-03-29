@@ -1,9 +1,7 @@
 import {JSDOM} from "jsdom"
-import {AxiosInstance} from "axios"
-import FsProxy from "fsProxy"
 import {AssetMigrator} from "assetMigrators/AssetMigrator"
 import {Article} from "types/Article"
-import {promiseSequence} from "../lib/util"
+import {syncMap} from "../lib/util"
 import {AssetUploader} from "assetMigrators/AssetUploader"
 
 export class TumblrAssetMigrator implements AssetMigrator {
@@ -27,10 +25,10 @@ export class TumblrAssetMigrator implements AssetMigrator {
 			}
 		).window.document.body
 
-		await promiseSequence(Array.from(body.querySelectorAll("img"))
-			.map(async (img) =>
+		await syncMap(
+			Array.from(body.querySelectorAll("img")),
+			async (img) =>
 				img.src = await this.assetUploader.uploadAsset(img.src)
-			)
 		)
 
 		article.body = body.innerHTML

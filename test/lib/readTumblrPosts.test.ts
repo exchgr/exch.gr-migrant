@@ -1,27 +1,51 @@
-import {stub} from "sinon"
+import {createStubInstance, stub} from "sinon"
 import FsProxy from "../../src/fsProxy"
-import {readTumblrPosts} from "../../src/lib/readTumblrPosts"
+import {_onlyFiles, readTumblrPosts} from "../../src/lib/readTumblrPosts"
 import {expect} from "chai"
+import { Dirent } from "fs"
 
 describe("readTumblrPosts", () => {
-	// TODO: only read files, not directories
 	it("should read a file and return a TumblrPost", () => {
-		const tumblrFilenames = ["1.html"]
+		const tumblrFilename = "1.html"
 		const tumblrDirectory = "here"
+
+		const dirent = createStubInstance(Dirent, {
+			isFile: true
+		})
+		dirent.name = tumblrFilename
+		dirent.path = tumblrDirectory
 
 		const fsProxy = new FsProxy()
 
 		const domTextContent = "hi"
 
 		stub(fsProxy, "readFileSync")
-			.withArgs(tumblrFilenames[0]).returns(Buffer.from(`<body>${domTextContent}</body>`))
+			.withArgs(`${tumblrDirectory}/${tumblrFilename}`).returns(Buffer.from(`<body>${domTextContent}</body>`))
 
-		stub(fsProxy, "readdirSync")
-			.withArgs(tumblrDirectory).returns(tumblrFilenames)
+		stub(fsProxy, "readdirSyncWithFileTypes")
+			.withArgs(tumblrDirectory).returns([dirent])
 
 		const tumblrPosts = readTumblrPosts(fsProxy, tumblrDirectory)
 
 		expect(tumblrPosts[0].id).to.eq("1")
 		expect(tumblrPosts[0].dom.querySelector("body")!.textContent!).to.eq(domTextContent)
+	})
+
+	describe("_onlyFiles", () => {
+		it("should return true for files", () => {
+			const dirent = createStubInstance(Dirent, {
+				isFile: true
+			})
+
+			expect(_onlyFiles(dirent)).to.be.true
+		})
+
+		it("should return false for non-files", () => {
+			const dirent = createStubInstance(Dirent, {
+				isFile: false
+			})
+
+			expect(_onlyFiles(dirent)).to.be.false
+		})
 	})
 })

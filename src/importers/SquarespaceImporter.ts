@@ -39,7 +39,7 @@ export const _constructArticle = (item: Element): Article => {
 				contentType: "text/html",
 				url: "http://localhost"
 			}
-		).window.document.querySelector("article")!.textContent!,
+		).window.document.body.innerHTML,
 		createdAt: pubDate,
 		publishedAt: pubDate,
 		updatedAt: pubDate,

@@ -1,16 +1,25 @@
-import Strapi from "strapi-sdk-js"
-import {partition, promiseSequence} from "../lib/util"
+import {partition, syncMap} from "../lib/util"
 import {DataContainer} from "types/DataContainer"
 import {Connection} from "types/Connection"
 import {Entity} from "types/Entity"
 import {Table} from "types/Table"
 import {Attributes} from "types/Attributes"
+import qs from "qs"
+import {URL} from "url"
 
 export class StrapiExporter {
-	private strapi: Strapi
+	private readonly fetch: typeof fetch
+	private readonly strapiUrl: string
+	private readonly strapiToken: string
 
-	constructor(strapi: Strapi) {
-		this.strapi = strapi
+	constructor(
+		fetche: typeof fetch,
+		strapiUrl: string,
+		strapiToken: string,
+	) {
+		this.fetch = fetche
+		this.strapiUrl = strapiUrl
+		this.strapiToken = strapiToken
 	}
 
 	export = async (dataContainer: DataContainer): Promise<Entity<Attributes>[]> => {
@@ -18,16 +27,16 @@ export class StrapiExporter {
 			await Promise.all(dataContainer.articleAttributesCollection.map(
 				this._findOrInitEntityByProperty('articles', 'slug')
 			)),
-			this._exists
+			StrapiExporter._exists
 		)
 
-		const ensuredArticles = await promiseSequence([
-			...newArticles.map(this._createEntity('articles')),
-			...extantArticles.map(this._updateEntity('articles')),
-		])
+		const ensuredArticles = [
+			...await syncMap(newArticles, this._createEntity('articles')),
+			...await syncMap(extantArticles, this._updateEntity('articles'))
+		]
 
 		const [extantTags, newTags] = partition(
-			this._connectEntitiesOneToMany(
+			StrapiExporter._connectEntitiesOneToMany(
 				dataContainer.tagArticles,
 				ensuredArticles,
 				await Promise.all(
@@ -39,11 +48,11 @@ export class StrapiExporter {
 				"slug",
 				"slug"
 			),
-			this._exists
+			StrapiExporter._exists
 		)
 
 		const [extantCollections, newCollections] = partition(
-			this._connectEntitiesOneToMany(
+			StrapiExporter._connectEntitiesOneToMany(
 				dataContainer.collectionArticles,
 				ensuredArticles,
 				await Promise.all(
@@ -55,11 +64,11 @@ export class StrapiExporter {
 				"slug",
 				"slug"
 			),
-			this._exists
+			StrapiExporter._exists
 		)
 
 		const [extantRedirects, newRedirects] = partition(
-			this._connectEntitiesOneToOne(
+			StrapiExporter._connectEntitiesOneToOne(
 				dataContainer.redirectArticles,
 				ensuredArticles,
 				await Promise.all(
@@ -69,63 +78,108 @@ export class StrapiExporter {
 				"slug",
 				"from"
 			),
-			this._exists
+			StrapiExporter._exists
 		)
 
 		return [
 			...ensuredArticles,
-			...await promiseSequence<Entity<Attributes>>([
-				...newTags.map(this._createEntity('tags')),
-				...extantTags.map(this._updateEntity('tags')),
-				...newCollections.map(this._createEntity('collections')),
-				...extantCollections.map(this._updateEntity('collections')),
-				...newRedirects.map(this._createEntity('redirects')),
-				...extantRedirects.map(this._updateEntity('redirects'))
-			])
+			...await syncMap(newTags, this._createEntity('tags')),
+			...await syncMap(extantTags, this._updateEntity('tags')),
+			...await syncMap(newCollections, this._createEntity('collections')),
+			...await syncMap(extantCollections, this._updateEntity('collections')),
+			...await syncMap(newRedirects, this._createEntity('redirects')),
+			...await syncMap(extantRedirects, this._updateEntity('redirects')),
 		]
 	}
 
 	_findOrInitEntityByProperty = <T extends Attributes>(
 		table: Table,
 		property: keyof T
-	) =>
-		async (entityAttributes: T): Promise<Entity<T>> => {
-			try {
-				const entity = (await this.strapi.find<Entity<T>[]>(table, {
-					filters: {
-						[property]: {
-							$eq: entityAttributes[property]
+	) => async (entityAttributes: T): Promise<Entity<T>> => {
+		const response = await this.fetch(
+			new URL(
+				`/api/${table}?${qs.stringify(
+					{
+						filters: {
+							[property]: {
+								$eq: entityAttributes[property]
+							}
 						}
-					}
-				})).data[0]
-
-				entity.attributes = entityAttributes
-
-				return entity
-			} catch (e: any) {
-				if (e.error.name !== "NotFoundError") {
-					throw e
-				}
-
-				return {
-					id: undefined,
-					attributes: entityAttributes,
-					meta: {}
-				}
+					},
+					{encode: false},
+				)}`,
+				this.strapiUrl,
+			),
+			{
+				headers: {'Authorization': `bearer ${this.strapiToken}`}
 			}
+		)
+
+		if (!response.ok) {
+			throw new Error(`Error: ${response.status} ${response.statusText}`)
 		}
 
+		const entity: Entity<T> = (await response.json()).data[0] || {
+			id: undefined,
+			attributes: undefined,
+			meta: {}
+		}
+
+		entity.attributes = entityAttributes
+		return entity
+	}
+
 	_createEntity = <T extends Attributes>(table: Table) =>
-		async(entity: Entity<T>): Promise<Entity<T>> =>
-			(await this.strapi.create<Entity<T>>(table, entity.attributes)).data
+		async(entity: Entity<T>): Promise<Entity<T>> => {
+			const response = await this.fetch(
+				new URL(`/api/${table}`, this.strapiUrl),
+				{
+					method: "POST",
+					headers: {
+						'Content-Type': 'application/json',
+						'Authorization': `bearer ${this.strapiToken}`
+					},
+					body: JSON.stringify({
+						data: entity.attributes
+					})
+				}
+			)
+
+			if (!response.ok) {
+				const {error} = await response.json()
+				throw new Error(`Error: ${response.status} ${response.statusText}
+${error.name}: ${error.message}`)
+			}
+
+			return (await response.json()).data
+		}
 
 	_updateEntity = <T extends Attributes>(table: Table) =>
-		async (entity: Entity<T>): Promise<Entity<T>> =>
-			(await this.strapi.update<Entity<T>>(table, entity.id!, entity.attributes)).data
+		async (entity: Entity<T>): Promise<Entity<T>> => {
+			const response = await this.fetch(
+				new URL(`/api/${table}/${entity.id!}`, this.strapiUrl),
+				{
+					method: "PUT",
+					headers: {
+						'Content-Type': 'application/json',
+						'Authorization': `bearer ${this.strapiToken}`
+					},
+					body: JSON.stringify({
+						data: entity.attributes
+					})
+				}
+			)
 
-	_exists = <T extends Attributes>(entity: Entity<T>) => !!entity.id
+			if (!response.ok) {
+				throw new Error(`Error: ${response.status} ${response.statusText}`)
+			}
 
-	_connectEntitiesOneToMany = <
+			return (await response.json()).data
+		}
+
+	static _exists = <T extends Attributes>(entity: Entity<T>) => !!entity.id
+
+	static _connectEntitiesOneToMany = <
 		T extends Attributes,
 		U extends Attributes
 	>(
@@ -140,14 +194,16 @@ export class StrapiExporter {
 			...uEntity,
 			attributes: {
 				...uEntity.attributes,
-				[connectionField]: tEntities.filter((tEntity) =>
-					connections[uEntity.attributes[uConnectionKey] as string]
-						.includes(tEntity.attributes[tConnectionKey] as string)
-				).map((entity) => entity.id!)
+				[connectionField]: {
+					connect: tEntities.filter((tEntity) =>
+						connections[uEntity.attributes[uConnectionKey] as string]
+							.includes(tEntity.attributes[tConnectionKey] as string)
+					).map((entity) => entity.id!)
+				}
 			}
 		}))
 
-	_connectEntitiesOneToOne = <
+	static _connectEntitiesOneToOne = <
 		T extends Attributes,
 		U extends Attributes
 	>(

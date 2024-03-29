@@ -1,9 +1,4 @@
-import Strapi, {
-	StrapiError,
-	StrapiRequestParams,
-	StrapiResponse
-} from "strapi-sdk-js"
-import {match, stub} from "sinon"
+import {match, restore, stub} from "sinon"
 import chai, {expect} from "chai"
 import sinonChai from "sinon-chai"
 import chaiAsPromised from "chai-as-promised"
@@ -17,6 +12,8 @@ import {Redirect} from "../../src/types/Redirect"
 import {Entity} from "../../src/types/Entity"
 import {Table} from "../../src/types/Table"
 import {Attributes} from "../../src/types/Attributes"
+import {URL} from "url"
+import qs from "qs"
 
 chai.use(sinonChai)
 chai.use(chaiAsPromised)
@@ -59,6 +56,7 @@ type UpdateEntityTestDatum<T extends Attributes> = {
 
 describe("StrapiExporter", () => {
 	const strapiUrl = "http://localhost:1337"
+	const strapiToken = "apiToken"
 
 	describe("export", () => {
 		it("should update extant articles and create new ones", async () => {
@@ -106,7 +104,9 @@ describe("StrapiExporter", () => {
 			const extantTagEntityWithArticleIds: Entity<Tag> = {
 				...extantTagEntity,
 				attributes: {
-					articles: [extantArticleId, newArticleId],
+					articles: {
+						connect: [extantArticleId, newArticleId]
+					},
 					...extantTag
 				},
 			}
@@ -126,7 +126,9 @@ describe("StrapiExporter", () => {
 			const newTagEntityWithArticleIds: Entity<Tag> = {
 				...newTagEntity,
 				attributes: {
-					articles: [newArticleId],
+					articles: {
+						connect: [newArticleId]
+					},
 					...newTag
 				},
 			}
@@ -157,7 +159,9 @@ describe("StrapiExporter", () => {
 				...newCollectionEntity,
 				attributes: {
 					...newCollection,
-					articles: [extantArticleId]
+					articles: {
+						connect: [extantArticleId]
+					}
 				}
 			}
 
@@ -183,7 +187,9 @@ describe("StrapiExporter", () => {
 				...extantCollectionEntity,
 				attributes: {
 					...extantCollection,
-					articles: [newArticleId]
+					articles: {
+						connect: [newArticleId]
+					}
 				}
 			}
 
@@ -282,9 +288,9 @@ describe("StrapiExporter", () => {
 				meta: {}
 			}
 
-			const strapi = new Strapi({ url: strapiUrl })
+			const fetche = stub()
 
-			const strapiExporter = new StrapiExporter(strapi)
+			const strapiExporter = new StrapiExporter(fetche, strapiUrl, strapiToken)
 
 			const findOrInitEntityByProperty = async <T extends Attributes>(entityAttributes: T): Promise<Entity<T>> => {
 				switch (entityAttributes) {
@@ -323,16 +329,6 @@ describe("StrapiExporter", () => {
 				.withArgs('tags', match('slug')).returns(findOrInitEntityByProperty)
 				.withArgs('collections', match('slug')).returns(findOrInitEntityByProperty)
 				.withArgs('redirects', match('from')).returns(findOrInitEntityByProperty)
-
-			stub(strapiExporter, "_exists")
-				.withArgs(extantArticleEntity).returns(true)
-				.withArgs(newArticleEntity).returns(false)
-				.withArgs(extantTagEntityWithArticleIds).returns(true)
-				.withArgs(newTagEntityWithArticleIds).returns(false)
-				.withArgs(extantCollectionEntityWithArticleIds).returns(true)
-				.withArgs(newCollectionEntityWithArticleIds).returns(false)
-				.withArgs(extantRedirectEntityWithArticleId).returns(true)
-				.withArgs(newRedirectEntityWithArticleId).returns(false)
 
 			const updateEntity = async <T extends Attributes>(entity: Entity<T>): Promise<Entity<T>> => {
 				switch(entity) {
@@ -386,8 +382,7 @@ describe("StrapiExporter", () => {
 				.withArgs('collections').returns(createEntity)
 				.withArgs('redirects').returns(createEntity)
 
-
-			stub(strapiExporter, "_connectEntitiesOneToMany")
+			stub(StrapiExporter, "_connectEntitiesOneToMany")
 				.withArgs(
 					match(tagArticles),
 					match.array.deepEquals([
@@ -412,7 +407,7 @@ describe("StrapiExporter", () => {
 				newCollectionEntityWithArticleIds
 			])
 
-			stub(strapiExporter, "_connectEntitiesOneToOne")
+			stub(StrapiExporter, "_connectEntitiesOneToOne")
 				.withArgs(
 					match(redirectArticles),
 					match.array.deepEquals([
@@ -435,6 +430,8 @@ describe("StrapiExporter", () => {
 				createdNewRedirectEntityWithArticleId,
 				extantRedirectEntityWithArticleId
 			])
+
+			restore()
 		})
 	})
 
@@ -496,34 +493,45 @@ describe("StrapiExporter", () => {
 
 		findOrInitEntityByPropertyExtantTestData.forEach(<T extends Attributes>(testDatum: FindOrInitEntityByPropertyExtantTestDatum<T>) => {
 			it(`should return an existing ${testDatum.titleEntityName}, updated with incoming ${testDatum.titleEntityName}Attributes data`, async () => {
-				const queryParams: StrapiRequestParams = {
-					filters: {
-						[testDatum.propertyName]: {
-							$eq: testDatum.propertyValue
-						}
-					}
-				}
-
 				const entity: Entity<T> = {
 					id: testDatum.id,
 					attributes: testDatum.entityAttributes,
 					meta: {}
-				} as Entity<T>
+				}
 
-				const strapi = new Strapi({ url: strapiUrl })
-
-				stub(strapi, "find").withArgs(testDatum.table, queryParams).resolves({
-					data: [{
-						id: testDatum.id,
-						attributes: {
-							[testDatum.propertyName]: testDatum.propertyValue
-						} as unknown as T,
+				const response = {
+					ok: true,
+					status: 200,
+					statusText: "OK",
+					json: async (): Promise<{ data: Entity<T>[], meta: {} }> => ({
+						data: [{
+							id: testDatum.id,
+							attributes: {
+								[testDatum.propertyName]: testDatum.propertyValue
+							} as unknown as T,
+							meta: {}
+						}],
 						meta: {}
-					}],
-					meta: {}
-				} as StrapiResponse<Entity<T>[]>)
+					})
+				}
 
-				const strapiExporter = new StrapiExporter(strapi)
+				const fetche = stub().withArgs(
+					new URL(`/api/${testDatum.table}?${qs.stringify({
+						filters: {
+							[testDatum.propertyName]: {
+								$eq: testDatum.propertyValue
+							}
+						}
+					}, {encode: false})}`, strapiUrl),
+					{
+						headers: {
+							'Content-Type': 'application/json',
+							'Authorization': `bearer ${strapiToken}`
+						}
+					}
+				).resolves(response)
+
+				const strapiExporter = new StrapiExporter(fetche, strapiUrl, strapiToken)
 
 				expect(await strapiExporter._findOrInitEntityByProperty<T>(testDatum.table, testDatum.propertyName)(testDatum.entityAttributes)).to.deep.eq(entity)
 			})
@@ -580,33 +588,40 @@ describe("StrapiExporter", () => {
 
 		findOrInitEntityByPropertyNewTestData.forEach(<T extends Attributes>(testDatum: FindOrInitEntityByPropertyNewTestDatum<T>) => {
 			it(`should return a new ${testDatum.titleEntityName} if one doesn't exist`, async () => {
-				const queryParams: StrapiRequestParams = {
-					filters: {
-						[testDatum.propertyName]: {
-							$eq: testDatum.propertyValue
-						}
-					}
-				}
-
 				const entity: Entity<T> = {
 					id: undefined,
 					attributes: testDatum.entityAttributes,
 					meta: {}
 				} as Entity<T>
 
-				const strapi = new Strapi({ url: strapiUrl })
+				const response = {
+					ok: true,
+					status: 200,
+					statusText: "OK",
+					json: async (): Promise<{ data: Entity<T>[], meta: {} }> => ({
+						data: [],
+						meta: {}
+					})
+				}
 
-				stub(strapi, "find").withArgs(testDatum.table, queryParams).rejects({
-					data: null,
-					error: {
-						status: 404,
-						name: "NotFoundError",
-						message: "Not Found",
-						details: {},
-					},
-				} as StrapiError)
+				const fetche = stub()
+					.withArgs(
+						new URL(`/api/${testDatum.table}?${qs.stringify({
+							filters: {
+								[testDatum.propertyName]: {
+									$eq: testDatum.propertyValue
+								}
+							}
+						}, {encode: false})}`, strapiUrl),
+						{
+							headers: {
+								'Content-Type': 'application/json',
+								'Authorization': `bearer ${strapiToken}`
+							}
+						}
+					).resolves(response)
 
-				const strapiExporter = new StrapiExporter(strapi)
+				const strapiExporter = new StrapiExporter(fetche, strapiUrl, strapiToken)
 
 				expect(await strapiExporter._findOrInitEntityByProperty<T>(testDatum.table, testDatum.propertyName)(testDatum.entityAttributes)).to.deep.eq(entity)
 			})
@@ -659,31 +674,43 @@ describe("StrapiExporter", () => {
 
 		findOrInitEntityByPropertyErrorTestData.forEach(<T extends Attributes>(testDatum: FindOrInitEntityByPropertyErrorTestDatum<T>) => {
 			it("should rethrow all other errors", async () => {
-				const heyQueryParams: StrapiRequestParams = {
-					filters: {
-						[testDatum.propertyName]: {
-							$eq: testDatum.propertyValue
-						}
-					}
-				}
+				const status = 502
+				const statusText = "Bad Gateway"
 
 				const error = {
-					status: 502,
-					name: "BadGatewayError",
-					message: "Bad Gateway",
-					details: {},
+					name: "Badness of Gateway",
+					message: "Thou hast experienced a badness of gateway."
 				}
 
-				const strapi = new Strapi({ url: strapiUrl })
+				const errorMessage = `Error: ${status} ${statusText}
+${error.name}: ${error.message}`
 
-				stub(strapi, "find").withArgs(testDatum.table, heyQueryParams).rejects({
-					data: null,
-					error: error,
-				} as StrapiError)
+				const response = {
+					ok: false,
+					status,
+					statusText,
+					json: async() => ({
+						error
+					})
+				}
 
-				const strapiExporter = new StrapiExporter(strapi)
+				const fetche = stub()
+					.withArgs(
+						new URL(`/api/${testDatum.table}?${qs.stringify({
+							filters: {
+								[testDatum.propertyName]: {
+									$eq: testDatum.propertyValue
+								}
+							}
+						}, {encode: false})}`, strapiUrl),
+						{
+							headers: {'Authorization': `bearer ${strapiToken}`}
+						}
+					).resolves(response)
 
-				expect(strapiExporter._findOrInitEntityByProperty<T>(testDatum.table, testDatum.propertyName)(testDatum.entityAttributes)).to.be.rejectedWith(error)
+				const strapiExporter = new StrapiExporter(fetche, strapiUrl, strapiToken)
+
+				expect(strapiExporter._findOrInitEntityByProperty<T>(testDatum.table, testDatum.propertyName)(testDatum.entityAttributes)).to.be.rejectedWith(errorMessage)
 			})
 		})
 	})
@@ -738,19 +765,37 @@ describe("StrapiExporter", () => {
 					meta: {}
 				}
 
-				const strapi = new Strapi({ url: strapiUrl })
-
 				const createdEntity = {
 					id: 1,
 					...newEntity
 				}
 
-				stub(strapi, "create").withArgs(testDatum.table, testDatum.entityAttributes).resolves({
-					data: createdEntity,
-					meta: {}
-				})
+				const response = {
+					ok: true,
+					status: 200,
+					statusText: "OK",
+					json: async (): Promise<{ data: Entity<T>, meta: {} }> => ({
+						data: createdEntity,
+						meta: {}
+					})
+				}
 
-				const strapiExporter = new StrapiExporter(strapi)
+				const fetche = stub()
+					.withArgs(
+						new URL(`/api/${testDatum.table}`, strapiUrl),
+						{
+							method: "POST",
+							headers: {
+								'Content-Type': 'application/json',
+								'Authorization': `bearer ${strapiToken}`
+							},
+							body: JSON.stringify({
+								data: testDatum.entityAttributes
+							})
+						}
+					).resolves(response)
+
+				const strapiExporter = new StrapiExporter(fetche, strapiUrl, strapiToken)
 
 				expect(await strapiExporter._createEntity(testDatum.table)(newEntity)).to.eq(createdEntity)
 			})
@@ -809,14 +854,32 @@ describe("StrapiExporter", () => {
 					meta: {}
 				} as Entity<T>
 
-				const strapi = new Strapi({url: strapiUrl})
+				const response = {
+					ok: true,
+					status: 200,
+					statusText: "OK",
+					json: async (): Promise<{ data: Entity<T>, meta: {} }> => ({
+						data: entity,
+						meta: {}
+					})
+				}
 
-				stub(strapi, "update").withArgs(testDatum.table, id, testDatum.entityAttributes).resolves({
-					data: entity,
-					meta: {}
-				})
+				const fetche = stub()
+					.withArgs(
+						new URL(`/api/${testDatum.table}`, strapiUrl),
+						{
+							method: "PUT",
+							headers: {
+								'Content-Type': 'application/json',
+								'Authorization': `bearer ${strapiToken}`
+							},
+							body: JSON.stringify({
+								data: testDatum.entityAttributes
+							})
+						}
+					).resolves(response)
 
-				const strapiExporter = new StrapiExporter(strapi)
+				const strapiExporter = new StrapiExporter(fetche, strapiUrl, strapiToken)
 
 				expect(await strapiExporter._updateEntity(testDatum.table)(entity)).to.eq(entity)
 			})
@@ -840,11 +903,7 @@ describe("StrapiExporter", () => {
 				meta: {}
 			}
 
-			const strapi = new Strapi({ url: strapiUrl })
-
-			const strapiExporter = new StrapiExporter(strapi)
-
-			expect(strapiExporter._exists(article)).to.be.true
+			expect(StrapiExporter._exists(article)).to.be.true
 		})
 
 		it("should return false if article has no id", () => {
@@ -862,16 +921,12 @@ describe("StrapiExporter", () => {
 				meta: {}
 			}
 
-			const strapi = new Strapi({ url: strapiUrl })
-
-			const strapiExporter = new StrapiExporter(strapi)
-
-			expect(strapiExporter._exists(article)).to.be.false
+			expect(StrapiExporter._exists(article)).to.be.false
 		})
 	})
 
 	describe("_connectEntitiesOneToMany", () => {
-		it("should connect two entities by putting A's IDs into B's As field", () => {
+		it("should connect created articles to tags by putting articles' IDs into tag's articles field", () => {
 			const tagSlug = "tag"
 			const articleSlug = "article"
 			const articleId = 1
@@ -916,20 +971,16 @@ describe("StrapiExporter", () => {
 					...tag,
 					attributes: {
 						...tagAttributes,
-						articles: [articleId]
+						articles: {
+							connect: [articleId]
+						}
 					}
 				}
 			]
 
-			const strapi = new Strapi({ url: strapiUrl })
-
-			const strapiExporter = new StrapiExporter(strapi)
-
-			expect(strapiExporter._connectEntitiesOneToMany(tagArticles, articles, tags, "articles", "slug", "slug")).to.deep.eq(tagsWithArticleIds)
+			expect(StrapiExporter._connectEntitiesOneToMany(tagArticles, articles, tags, "articles", "slug", "slug")).to.deep.eq(tagsWithArticleIds)
 		})
-	})
 
-	describe("_connectEntitiesOneToMany", () => {
 		it("should connect created articles to collections by putting articles' IDs into collections' articles field", () => {
 			const collectionSlug = "tag"
 			const articleSlug = "article"
@@ -976,16 +1027,14 @@ describe("StrapiExporter", () => {
 					...collection,
 					attributes: {
 						...collectionAttributes,
-						articles: [articleId]
+						articles: {
+							connect: [articleId]
+						}
 					}
 				}
 			]
 
-			const strapi = new Strapi({ url: strapiUrl })
-
-			const strapiExporter = new StrapiExporter(strapi)
-
-			expect(strapiExporter._connectEntitiesOneToMany(
+			expect(StrapiExporter._connectEntitiesOneToMany(
 				collectionArticles, articles, collections, "articles", "slug", "slug"
 			)).to.deep.eq(collectionsWithArticleIds)
 		})
@@ -1039,11 +1088,7 @@ describe("StrapiExporter", () => {
 				}
 			}]
 
-			const strapi = new Strapi({ url: strapiUrl })
-
-			const strapiExporter = new StrapiExporter(strapi)
-
-			expect(strapiExporter._connectEntitiesOneToOne(
+			expect(StrapiExporter._connectEntitiesOneToOne(
 				redirectArticles, articles, redirects, "to", "slug", "from"
 			)).to.deep.eq(redirectsWithArticleIds)
 		})

@@ -1,16 +1,17 @@
-import { AxiosInstance } from "axios";
 import FsProxy from "fsProxy"
-import {AssetUploader} from "assetMigrators/AssetUploader"
+import {AssetUploader} from "../assetMigrators/AssetUploader"
 
 export type AssetUploaderFactory = (
-	axios: AxiosInstance,
+	strapiUrl: string,
+	fetche: typeof fetch,
 	fs: FsProxy,
 	strapiToken: string
 ) => AssetUploader
 
 export const buildAssetUploader: AssetUploaderFactory = (
-	axios,
+	strapiUrl,
+	fetche,
 	fs,
 	strapiToken
 ) =>
-	new AssetUploader(axios, fs, strapiToken)
+	new AssetUploader(strapiUrl, fetche, fs, strapiToken)

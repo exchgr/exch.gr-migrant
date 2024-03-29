@@ -1,7 +1,14 @@
-import Strapi from "strapi-sdk-js"
-import {StrapiExporter} from "exporters/StrapiExporter"
+import {StrapiExporter} from "../exporters/StrapiExporter"
 
-export type StrapiExporterFactory = (strapi: Strapi) => StrapiExporter
+export type StrapiExporterFactory = (
+	fetche: typeof fetch,
+	strapiUrl: string,
+	strapiToken: string,
+) => StrapiExporter
 
-export const buildStrapiExporter: StrapiExporterFactory = (strapi: Strapi) =>
-	new StrapiExporter(strapi)
+export const buildStrapiExporter: StrapiExporterFactory = (
+	fetche: typeof fetch,
+	strapiUrl: string,
+	strapiToken: string,
+) =>
+	new StrapiExporter(fetche, strapiUrl, strapiToken)

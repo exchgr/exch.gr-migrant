@@ -4,14 +4,14 @@ export const partition = <T>(array: T[], predicate: (element: T) => boolean) => 
 	), [[], []])
 )
 
-export const promiseSequence = async <T>(promises: Promise<T>[]): Promise<T[]> => {
-	const keptPromises = []
+export const syncMap = async <T, U>(array: T[], func: (arg: T) => Promise<U>): Promise<U[]> => {
+	const results: U[] = []
 
-	for (const promise of promises) {
-		keptPromises.push(await promise)
+	for (const t of array) {
+		results.push(await func(t))
 	}
 
-	return keptPromises
+	return results
 }
 
 export const titleize = (string: string): string =>
@@ -21,3 +21,13 @@ export const titleize = (string: string): string =>
 			return txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase();
 		}
 	)
+
+export const objectToFormData = (
+	object: {[key: string]: {file: Blob, filename: string}}
+): FormData => {
+	const formData = new FormData()
+	for (const key in object) {
+		formData.append(key, object[key].file, object[key].filename)
+	}
+	return formData
+}
