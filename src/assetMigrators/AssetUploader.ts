@@ -20,7 +20,7 @@ export class AssetUploader {
 		filename: string
 	): Promise<string> => (
 		(await this.axios.post(
-			"/upload",
+			"/api/upload",
 			{
 				files: [this.fs.readFileSync(filename)]
 			}, {

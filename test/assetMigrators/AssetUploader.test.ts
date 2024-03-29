@@ -13,7 +13,7 @@ describe("_uploadAsset", () => {
 		const strapiToken = "apiToken"
 
 		stub(axiosInstance, "post").withArgs(
-			"/upload",
+			"/api/upload",
 			{files: [file]},
 			{
 				headers: {
