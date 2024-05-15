@@ -8,16 +8,13 @@ import qs from "qs"
 import {URL} from "url"
 
 export class StrapiExporter {
-	private readonly fetch: typeof fetch
 	private readonly strapiUrl: string
 	private readonly strapiToken: string
 
 	constructor(
-		fetche: typeof fetch,
 		strapiUrl: string,
 		strapiToken: string,
 	) {
-		this.fetch = fetche
 		this.strapiUrl = strapiUrl
 		this.strapiToken = strapiToken
 	}
@@ -96,7 +93,7 @@ export class StrapiExporter {
 		table: Table,
 		property: keyof T
 	) => async (entityAttributes: T): Promise<Entity<T>> => {
-		const response = await this.fetch(
+		const response = await fetch(
 			new URL(
 				`/api/${table}?${qs.stringify(
 					{
@@ -131,7 +128,7 @@ export class StrapiExporter {
 
 	_createEntity = <T extends Attributes>(table: Table) =>
 		async(entity: Entity<T>): Promise<Entity<T>> => {
-			const response = await this.fetch(
+			const response = await fetch(
 				new URL(`/api/${table}`, this.strapiUrl),
 				{
 					method: "POST",
@@ -156,7 +153,7 @@ ${error.name}: ${error.message}`)
 
 	_updateEntity = <T extends Attributes>(table: Table) =>
 		async (entity: Entity<T>): Promise<Entity<T>> => {
-			const response = await this.fetch(
+			const response = await fetch(
 				new URL(`/api/${table}/${entity.id!}`, this.strapiUrl),
 				{
 					method: "PUT",

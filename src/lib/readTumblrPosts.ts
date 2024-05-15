@@ -1,12 +1,11 @@
 import {JSDOM} from "jsdom"
 import {TumblrPost} from "types/TumblrPost"
-import FsProxy from "fsProxy"
 import * as path from "path"
-import {Dirent} from "fs"
+import fs, {Dirent} from "fs"
 
-export const readTumblrPosts: ReadTumblrPosts = (fs, tumblrDirectory) => {
+export const readTumblrPosts: ReadTumblrPosts = (tumblrDirectory) => {
 	return (
-		fs.readdirSyncWithFileTypes(tumblrDirectory)
+		fs.readdirSync(tumblrDirectory, { withFileTypes: true })
 			.filter(_onlyFiles)
 			.map((dirent) => ({
 				id: dirent.name.replace(/.html$/, ''),
@@ -24,4 +23,4 @@ export const readTumblrPosts: ReadTumblrPosts = (fs, tumblrDirectory) => {
 export const _onlyFiles = (dirent: Dirent) => dirent.isFile()
 
 export type ReadTumblrPosts =
-	(fs: FsProxy, tumblrDirectory: string) => TumblrPost[]
+	(tumblrDirectory: string) => TumblrPost[]

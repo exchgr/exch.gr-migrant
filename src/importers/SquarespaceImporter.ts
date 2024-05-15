@@ -4,9 +4,7 @@ import {Tag} from "types/Tag"
 import {DatumContainer} from "types/DatumContainer"
 import {Redirect} from "types/Redirect"
 
-export type SquarespaceImporter = (data: string) => DatumContainer[]
-
-export const importSquarespace: SquarespaceImporter =
+export const importSquarespace: (data: string) => DatumContainer[] =
 	(squarespaceData: string): DatumContainer[] =>
 		_extractItems(squarespaceData)
 			.filter(_isPost)

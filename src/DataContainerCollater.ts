@@ -7,9 +7,7 @@ import {Redirect} from "types/Redirect"
 import {Attributes} from "types/Attributes"
 import {Connection} from "types/Connection"
 
-export type DataContainerCollater = (datumContainers: DatumContainer[]) => DataContainer
-
-export const collateDataContainer: DataContainerCollater = (datumContainers: DatumContainer[]): DataContainer => {
+export const collateDataContainer: (datumContainers: DatumContainer[]) => DataContainer = (datumContainers: DatumContainer[]): DataContainer => {
 	const seenTagSlugs: string[] = []
 	const seenCollectionSlugs: string[] = []
 

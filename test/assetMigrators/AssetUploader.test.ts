@@ -1,11 +1,16 @@
-import FsProxy from "../../src/fsProxy"
-import {createStubInstance, stub} from "sinon"
-import {AssetUploader, _sanitizePath} from "../../src/assetMigrators/AssetUploader"
+import {restore, stub} from "sinon"
+import {
+	_sanitizePath,
+	AssetUploader
+} from "../../src/assetMigrators/AssetUploader"
 import {expect} from "chai"
 import {objectToFormData} from "../../src/lib/util"
 import {URL} from "url"
+import fs from "fs"
 
 describe("_uploadAsset", () => {
+	afterEach(restore)
+
 	it("should upload a file", async () => {
 		const filename = "673954189579288576_0.png"
 		const filePath = `/Users/test/tumblr-export/media/${filename}`
@@ -18,9 +23,9 @@ describe("_uploadAsset", () => {
 		const response = {
 			ok: true,
 			json: async () => [{url}]
-		}
+		} as Response
 
-		const fetche = stub()
+		global.fetch = stub()
 			.withArgs(
 				new URL("/api/upload", strapi),
 				{
@@ -30,13 +35,10 @@ describe("_uploadAsset", () => {
 				}
 			).resolves(response)
 
-		const fsProxy = new FsProxy()
-		stub(fsProxy, "openAsBlob").withArgs(filePath).resolves(file)
+		stub(fs, "openAsBlob").withArgs(filePath).resolves(file)
 
 		const assetUploader = new AssetUploader(
 			strapi,
-			fetche,
-			fsProxy,
 			strapiToken
 		)
 

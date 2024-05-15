@@ -1,18 +1,17 @@
-import { expect } from "chai"
-import {stub} from "sinon"
-import FsProxy from "../../src/fsProxy"
+import {expect} from "chai"
+import {createStubInstance, restore, stub} from "sinon"
 import {validateArgv} from "../../src/lib/validateArgv"
-import minimist from "minimist"
+import fs, {Dirent} from "fs"
 
 const strapiUrl = "http://localhost:1337"
 
 describe("validateArgv", () => {
+	afterEach(restore)
+
 	it("should fail if strapi server is unspecified", () => {
 		const argv: string[] = []
 
-		const fsProxy = new FsProxy()
-
-		expect(() => validateArgv(argv, fsProxy)).to.throw('Strapi server unspecified.')
+		expect(() => validateArgv(argv)).to.throw('Strapi server unspecified.')
 	})
 
 	it("should fail with a nonexistent squarespace file", async () => {
@@ -23,10 +22,9 @@ describe("validateArgv", () => {
 			'-r', strapiUrl
 		]
 
-		const fsProxy = new FsProxy()
-		stub(fsProxy, "existsSync").withArgs(squarespaceFilename).returns(false)
+		stub(fs, "existsSync").withArgs(squarespaceFilename).returns(false)
 
-		expect(() => validateArgv(argv, fsProxy)).to.throw(`Squarespace archive ${squarespaceFilename} doesn't exist.`)
+		expect(() => validateArgv(argv)).to.throw(`Squarespace archive ${squarespaceFilename} doesn't exist.`)
 	})
 
 	it("should fail with a nonexistent tumblr directory", () => {
@@ -39,13 +37,11 @@ describe("validateArgv", () => {
 			'-r', strapiUrl
 		]
 
-		const fsProxy = new FsProxy()
-
-		stub(fsProxy, "existsSync")
+		stub(fs, "existsSync")
 			.withArgs(squarespaceFilename).returns(true)
 			.withArgs(tumblrDirectory).returns(false)
 
-		expect(() => validateArgv(argv, fsProxy)).to.throw(`Tumblr archive ${tumblrDirectory} doesn't exist.`)
+		expect(() => validateArgv(argv)).to.throw(`Tumblr archive ${tumblrDirectory} doesn't exist.`)
 	})
 
 	it("should fail with an occupied cache directory", () => {
@@ -60,16 +56,14 @@ describe("validateArgv", () => {
 			'-c', cacheDir
 		]
 
-		const fsProxy = new FsProxy()
-
-		stub(fsProxy, "existsSync")
+		stub(fs, "existsSync")
 			.withArgs(squarespaceFilename).returns(true)
 			.withArgs(tumblrDirectory).returns(true)
 
-		stub(fsProxy, "readdirSync")
-			.withArgs(cacheDir).returns(["really important file.jpg"])
+		stub(fs, "readdirSync")
+			.withArgs(cacheDir).returns([createStubInstance(Dirent)])
 
-		expect(() => validateArgv(argv, fsProxy)).to.throw(`Cache directory ${cacheDir} isn't empty.`)
+		expect(() => validateArgv(argv)).to.throw(`Cache directory ${cacheDir} isn't empty.`)
 	})
 
 	it("should return valid options", () => {
@@ -96,16 +90,14 @@ describe("validateArgv", () => {
 			"cacheDirectory": cacheDir
 		}
 
-		const fsProxy = new FsProxy()
-
-		stub(fsProxy, "existsSync")
+		stub(fs, "existsSync")
 			.withArgs(squarespaceFilename).returns(true)
 			.withArgs(tumblrDirectory).returns(true)
 
-		stub(fsProxy, "readdirSync")
+		stub(fs, "readdirSync")
 			.withArgs(cacheDir).returns([])
 
-		expect(validateArgv(argv, fsProxy)).to.deep.eq(options)
+		expect(validateArgv(argv)).to.deep.eq(options)
 	})
 
 	it("should not require all importers at once", () => {
@@ -128,15 +120,13 @@ describe("validateArgv", () => {
 			"cacheDirectory": cacheDir
 		}
 
-		const fsProxy = new FsProxy()
-
-		stub(fsProxy, "existsSync")
+		stub(fs, "existsSync")
 			.withArgs(squarespaceFilename).returns(true)
 
-		stub(fsProxy, "readdirSync")
+		stub(fs, "readdirSync")
 			.withArgs(cacheDir).returns([])
 
-		expect(validateArgv(argv, fsProxy)).to.deep.eq(options)
+		expect(validateArgv(argv)).to.deep.eq(options)
 	})
 
 	it("should require at least one importer", () => {
@@ -155,9 +145,7 @@ describe("validateArgv", () => {
 			"cacheDirectory": cacheDir
 		}
 
-		const fsProxy = new FsProxy()
-
-		expect(() => validateArgv(argv, fsProxy)).to.throw(
+		expect(() => validateArgv(argv)).to.throw(
 `No importers specified. Please check your command line arguments.
 For more information, see the README or run this command with -h.`
 		)

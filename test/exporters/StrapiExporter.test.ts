@@ -55,6 +55,7 @@ type UpdateEntityTestDatum<T extends Attributes> = {
 }
 
 describe("StrapiExporter", () => {
+	afterEach(restore)
 	const strapiUrl = "http://localhost:1337"
 	const strapiToken = "apiToken"
 
@@ -288,9 +289,7 @@ describe("StrapiExporter", () => {
 				meta: {}
 			}
 
-			const fetche = stub()
-
-			const strapiExporter = new StrapiExporter(fetche, strapiUrl, strapiToken)
+			const strapiExporter = new StrapiExporter(strapiUrl, strapiToken)
 
 			const findOrInitEntityByProperty = async <T extends Attributes>(entityAttributes: T): Promise<Entity<T>> => {
 				switch (entityAttributes) {
@@ -430,8 +429,6 @@ describe("StrapiExporter", () => {
 				createdNewRedirectEntityWithArticleId,
 				extantRedirectEntityWithArticleId
 			])
-
-			restore()
 		})
 	})
 
@@ -513,9 +510,9 @@ describe("StrapiExporter", () => {
 						}],
 						meta: {}
 					})
-				}
+				} as Response
 
-				const fetche = stub().withArgs(
+				global.fetch = stub().withArgs(
 					new URL(`/api/${testDatum.table}?${qs.stringify({
 						filters: {
 							[testDatum.propertyName]: {
@@ -531,7 +528,7 @@ describe("StrapiExporter", () => {
 					}
 				).resolves(response)
 
-				const strapiExporter = new StrapiExporter(fetche, strapiUrl, strapiToken)
+				const strapiExporter = new StrapiExporter(strapiUrl, strapiToken)
 
 				expect(await strapiExporter._findOrInitEntityByProperty<T>(testDatum.table, testDatum.propertyName)(testDatum.entityAttributes)).to.deep.eq(entity)
 			})
@@ -602,9 +599,9 @@ describe("StrapiExporter", () => {
 						data: [],
 						meta: {}
 					})
-				}
+				} as Response
 
-				const fetche = stub()
+				global.fetch = stub()
 					.withArgs(
 						new URL(`/api/${testDatum.table}?${qs.stringify({
 							filters: {
@@ -621,7 +618,7 @@ describe("StrapiExporter", () => {
 						}
 					).resolves(response)
 
-				const strapiExporter = new StrapiExporter(fetche, strapiUrl, strapiToken)
+				const strapiExporter = new StrapiExporter(strapiUrl, strapiToken)
 
 				expect(await strapiExporter._findOrInitEntityByProperty<T>(testDatum.table, testDatum.propertyName)(testDatum.entityAttributes)).to.deep.eq(entity)
 			})
@@ -692,9 +689,9 @@ ${error.name}: ${error.message}`
 					json: async() => ({
 						error
 					})
-				}
+				} as Response
 
-				const fetche = stub()
+				global.fetch = stub()
 					.withArgs(
 						new URL(`/api/${testDatum.table}?${qs.stringify({
 							filters: {
@@ -708,7 +705,7 @@ ${error.name}: ${error.message}`
 						}
 					).resolves(response)
 
-				const strapiExporter = new StrapiExporter(fetche, strapiUrl, strapiToken)
+				const strapiExporter = new StrapiExporter(strapiUrl, strapiToken)
 
 				expect(strapiExporter._findOrInitEntityByProperty<T>(testDatum.table, testDatum.propertyName)(testDatum.entityAttributes)).to.be.rejectedWith(errorMessage)
 			})
@@ -778,9 +775,9 @@ ${error.name}: ${error.message}`
 						data: createdEntity,
 						meta: {}
 					})
-				}
+				} as Response
 
-				const fetche = stub()
+				global.fetch = stub()
 					.withArgs(
 						new URL(`/api/${testDatum.table}`, strapiUrl),
 						{
@@ -795,7 +792,7 @@ ${error.name}: ${error.message}`
 						}
 					).resolves(response)
 
-				const strapiExporter = new StrapiExporter(fetche, strapiUrl, strapiToken)
+				const strapiExporter = new StrapiExporter(strapiUrl, strapiToken)
 
 				expect(await strapiExporter._createEntity(testDatum.table)(newEntity)).to.eq(createdEntity)
 			})
@@ -862,9 +859,9 @@ ${error.name}: ${error.message}`
 						data: entity,
 						meta: {}
 					})
-				}
+				} as Response
 
-				const fetche = stub()
+				global.fetch = stub()
 					.withArgs(
 						new URL(`/api/${testDatum.table}`, strapiUrl),
 						{
@@ -879,7 +876,7 @@ ${error.name}: ${error.message}`
 						}
 					).resolves(response)
 
-				const strapiExporter = new StrapiExporter(fetche, strapiUrl, strapiToken)
+				const strapiExporter = new StrapiExporter(strapiUrl, strapiToken)
 
 				expect(await strapiExporter._updateEntity(testDatum.table)(entity)).to.eq(entity)
 			})

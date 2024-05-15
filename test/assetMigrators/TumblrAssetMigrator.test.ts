@@ -1,5 +1,4 @@
 import {TumblrAssetMigrator} from "../../src/assetMigrators/TumblrAssetMigrator"
-import FsProxy from "../../src/fsProxy"
 import {expect} from "chai"
 import {stub} from "sinon"
 import {Article} from "../../src/types/Article"
@@ -11,7 +10,6 @@ import * as path from "path"
 describe("TumblrAssetMigrator", () => {
 	describe("migrateAssets", () => {
 		it("should migrate assets to strapi", async () => {
-			const fs = new FsProxy()
 			const directory = "/Users/test/tumblr-export/posts/html/"
 			const strapiToken = "apiToken"
 
@@ -103,12 +101,9 @@ describe("TumblrAssetMigrator", () => {
 			))
 
 			const strapiUrl = "http://localhost:1337"
-			const fetche = stub()
 
 			const assetUploader = new AssetUploader(
 				strapiUrl,
-				fetche,
-				fs,
 				strapiToken
 			)
 

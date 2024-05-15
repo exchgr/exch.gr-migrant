@@ -8,8 +8,6 @@ import {Collection} from "types/Collection"
 import {titleize} from "../lib/util"
 import {Redirect} from "types/Redirect"
 
-export type TumblrImporter = (posts: TumblrPost[]) => DatumContainer[]
-
 const collectionSlugs: string[] = [
 	"drawing",
 	"music",
@@ -19,7 +17,7 @@ const collectionSlugs: string[] = [
 	"essays"
 ]
 
-export const importTumblr: TumblrImporter = (posts: TumblrPost[]): DatumContainer[] =>
+export const importTumblr: (posts: TumblrPost[]) => DatumContainer[] = (posts: TumblrPost[]): DatumContainer[] =>
 	[
 		...(posts.filter(_isText).map(_textToDatumContainer)),
 		...(posts.filter(_isPhoto).map(_photoToDatumContainer)),

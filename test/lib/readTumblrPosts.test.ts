@@ -1,10 +1,11 @@
-import {createStubInstance, stub} from "sinon"
-import FsProxy from "../../src/fsProxy"
+import {createStubInstance, restore, stub} from "sinon"
 import {_onlyFiles, readTumblrPosts} from "../../src/lib/readTumblrPosts"
 import {expect} from "chai"
-import { Dirent } from "fs"
+import fs, {Dirent} from "fs"
 
 describe("readTumblrPosts", () => {
+	afterEach(restore)
+
 	it("should read a file and return a TumblrPost", () => {
 		const tumblrFilename = "1.html"
 		const tumblrDirectory = "here"
@@ -15,17 +16,15 @@ describe("readTumblrPosts", () => {
 		dirent.name = tumblrFilename
 		dirent.path = tumblrDirectory
 
-		const fsProxy = new FsProxy()
-
 		const domTextContent = "hi"
 
-		stub(fsProxy, "readFileSync")
+		stub(fs, "readFileSync")
 			.withArgs(`${tumblrDirectory}/${tumblrFilename}`).returns(Buffer.from(`<body>${domTextContent}</body>`))
 
-		stub(fsProxy, "readdirSyncWithFileTypes")
-			.withArgs(tumblrDirectory).returns([dirent])
+		stub(fs, "readdirSync")
+			.withArgs(tumblrDirectory, { withFileTypes: true }).returns([dirent])
 
-		const tumblrPosts = readTumblrPosts(fsProxy, tumblrDirectory)
+		const tumblrPosts = readTumblrPosts(tumblrDirectory)
 
 		expect(tumblrPosts[0].id).to.eq("1")
 		expect(tumblrPosts[0].dom.querySelector("body")!.textContent!).to.eq(domTextContent)

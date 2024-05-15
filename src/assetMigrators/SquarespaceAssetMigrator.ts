@@ -1,26 +1,20 @@
 import {JSDOM} from "jsdom"
-import FsProxy from "fsProxy"
 import {Article} from "types/Article"
 import {syncMap} from "../lib/util"
 import * as path from "path"
 import {URL} from "url"
 import {AssetUploader} from "assetMigrators/AssetUploader"
 import {AssetMigrator} from "assetMigrators/AssetMigrator"
+import fs from "fs"
 
 export class SquarespaceAssetMigrator implements AssetMigrator {
-	private fetch: typeof fetch
-	private fs: FsProxy
 	private cacheDir: string
 	private assetUploader: AssetUploader
 
 	constructor(
-		fetche: typeof fetch,
-		fs: FsProxy,
 		cacheDir: string,
 		assetUploader: AssetUploader
 	) {
-		this.fetch = fetche
-		this.fs = fs
 		this.cacheDir = cacheDir
 		this.assetUploader = assetUploader
 	}
@@ -67,7 +61,7 @@ export class SquarespaceAssetMigrator implements AssetMigrator {
 					async (img) => {
 						const cachedPath = await this._downloadAsset(img.src)
 						img.src = await this.assetUploader.uploadAsset(cachedPath)
-						this.fs.unlinkSync(cachedPath)
+						fs.unlinkSync(cachedPath)
 						return img
 					}
 				)).map(galleryItemGetter).join("\n")
@@ -85,9 +79,9 @@ export class SquarespaceAssetMigrator implements AssetMigrator {
 			path.parse(new URL(url).pathname).base
 		)
 
-		this.fs.writeFileSync(
+		fs.writeFileSync(
 			cachedPath,
-			Buffer.from(await (await this.fetch(url)).arrayBuffer())
+			Buffer.from(await (await fetch(url)).arrayBuffer())
 		)
 
 		return cachedPath

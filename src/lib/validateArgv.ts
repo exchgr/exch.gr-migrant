@@ -1,8 +1,8 @@
-import FsProxy from "fsProxy"
 import minimist from "minimist"
 import * as process from "process"
+import fs from "fs"
 
-export const validateArgv: ValidateArgv = (argv, fsProxy) => {
+export const validateArgv: ValidateArgv = (argv) => {
 	const options = minimist(argv, {
 		alias: {
 			s: 'squarespace',
@@ -55,16 +55,16 @@ For more information, see the README or run this command with -h.`
 		)
 	}
 
-	if (options.squarespace && !fsProxy.existsSync(options.squarespace))
+	if (options.squarespace && !fs.existsSync(options.squarespace))
 		throw new Error(`Squarespace archive ${options.squarespace} doesn't exist.`)
 
-	if (options.tumblr && !fsProxy.existsSync(options.tumblr))
+	if (options.tumblr && !fs.existsSync(options.tumblr))
 		throw new Error(`Tumblr archive ${options.tumblr} doesn't exist.`)
 
-	if (fsProxy.readdirSync(options.cacheDirectory).length > 0)
+	if (fs.readdirSync(options.cacheDirectory).length > 0)
 		throw new Error(`Cache directory ${options.cacheDirectory} isn't empty.`)
 
 	return options
 }
 
-export type ValidateArgv = (argv: string[], fsProxy: FsProxy) => minimist.ParsedArgs
+export type ValidateArgv = (argv: string[]) => minimist.ParsedArgs

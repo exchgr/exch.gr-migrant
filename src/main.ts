@@ -1,11 +1,10 @@
-import FsProxy from "fsProxy"
 import {StrapiExporterFactory} from "factories/StrapiExporterFactory"
-import {TumblrImporter} from "./importers/TumblrImporter"
-import {ValidateArgv} from "lib/validateArgv"
+import {importTumblr} from "./importers/TumblrImporter"
+import {validateArgv} from "./lib/validateArgv"
 import {DatumContainer} from "types/DatumContainer"
-import {DataContainerCollater} from "DataContainerCollater"
-import {ReadTumblrPosts} from "lib/readTumblrPosts"
-import {SquarespaceImporter} from "importers/SquarespaceImporter"
+import {collateDataContainer} from "./DataContainerCollater"
+import {readTumblrPosts} from "./lib/readTumblrPosts"
+import {importSquarespace} from "./importers/SquarespaceImporter"
 import {TumblrAssetMigratorFactory} from "factories/TumblrAssetMigratorFactory"
 import {syncMap} from "./lib/util"
 import {
@@ -13,36 +12,33 @@ import {
 } from "factories/SquarespaceAssetMigratorFactory"
 import {AssetUploaderFactory} from "factories/AssetUploaderFactory"
 import readline from "readline/promises"
+import fs from "fs"
+import {stdin, stdout, argv} from "process"
 
 const main = async (
-	argv: string[],
-	validateArgv: ValidateArgv,
-	fsProxy: FsProxy,
-	rl: readline.Interface,
-	importSquarespace: SquarespaceImporter,
-	readTumblrPosts: ReadTumblrPosts,
-	importTumblr: TumblrImporter,
-	collateDataContainer: DataContainerCollater,
 	buildStrapiExporter: StrapiExporterFactory,
 	buildTumblrAssetMigrator: TumblrAssetMigratorFactory,
 	buildSquarespaceAssetMigrator: SquarespaceAssetMigratorFactory,
 	buildAssetUploader: AssetUploaderFactory
 ) => {
-	const options = validateArgv(argv, fsProxy)
+	const options = validateArgv(argv)
+
+	const rl = readline.createInterface({
+		input: stdin,
+		output: stdout
+	})
 
 	const strapiToken = await rl.question(`1. Go to ${options.strapi}/admin/settings/api-tokens
 2. Create an API token
 3. Paste the API token here and press [return]: `)
 
-	const strapiExporter = buildStrapiExporter(fetch, options.strapi, strapiToken)
-	const assetUploader = buildAssetUploader(options.strapi, fetch, fsProxy, strapiToken)
+	const strapiExporter = buildStrapiExporter(options.strapi, strapiToken)
+	const assetUploader = buildAssetUploader(options.strapi, strapiToken)
 
 	const datumContainers: DatumContainer[] = []
 
 	if (options.squarespace) {
 		const squarespaceAssetMigrator = buildSquarespaceAssetMigrator(
-			fetch,
-			fsProxy,
 			options.cacheDirectory,
 			assetUploader
 		)
@@ -51,7 +47,7 @@ const main = async (
 			datumContainers,
 			await syncMap(
 				importSquarespace(
-					fsProxy.readFileSync(
+					fs.readFileSync(
 						options.squarespace
 					).toString()
 				),
@@ -73,7 +69,7 @@ const main = async (
 			datumContainers,
 			await syncMap(
 				importTumblr(
-					readTumblrPosts(fsProxy, options.tumblr)
+					readTumblrPosts(options.tumblr)
 				), async (datumContainer) => (
 					datumContainer.article = await tumblrAssetMigrator.migrateAssets(datumContainer.article),
 						datumContainer

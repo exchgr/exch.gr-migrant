@@ -1,18 +1,17 @@
 import {JSDOM} from "jsdom"
 import chai, {expect} from 'chai'
 import {main} from "../src/main"
-import {spy, stub} from "sinon"
+import {createStubInstance, restore, SinonStub, spy, stub} from "sinon"
 import sinonChai from "sinon-chai"
 import chaiAsPromised from "chai-as-promised"
-import FsProxy from "../src/fsProxy"
 import {StrapiExporter} from "../src/exporters/StrapiExporter"
 import {DataContainer} from "../src/types/DataContainer"
-import {ValidateArgv} from "../src/lib/validateArgv"
+import * as validateArgv from "../src/lib/validateArgv"
 import {DatumContainer} from "../src/types/DatumContainer"
-import {DataContainerCollater} from "../src/DataContainerCollater"
+import * as DataContainerCollater from "../src/DataContainerCollater"
 import {TumblrPost} from "../src/types/TumblrPost"
-import {SquarespaceImporter} from "../src/importers/SquarespaceImporter"
-import {TumblrImporter} from "../src/importers/TumblrImporter"
+import * as SquarespaceImporter from "../src/importers/SquarespaceImporter"
+import * as TumblrImporter from "../src/importers/TumblrImporter"
 import {StrapiExporterFactory} from "../src/factories/StrapiExporterFactory"
 import {
 	TumblrAssetMigratorFactory
@@ -28,6 +27,9 @@ import {
 } from "../src/factories/SquarespaceAssetMigratorFactory"
 import readline from "readline/promises"
 import {stdin, stdout} from "process"
+import fs from "fs"
+import {Abortable} from "events"
+import * as ReadTumblrPosts from "../src/lib/readTumblrPosts"
 
 chai.use(sinonChai)
 chai.use(chaiAsPromised)
@@ -35,30 +37,33 @@ chai.use(chaiAsPromised)
 const strapiUrl = "http://localhost:1337"
 
 describe("main", () => {
+	afterEach(restore)
+
 	it("should process an existing squarespace export xml and export to strapi", async () => {
 		const squarespaceFilename = 'resources/Squarespace-Wordpress-Export-10-12-2023.xml';
 		const squarespaceData = "hi"
 		const tumblrDirectory = "here"
-		const fsProxy = new FsProxy()
-		stub(fsProxy, "readFileSync").withArgs(squarespaceFilename).returns(Buffer.from(squarespaceData))
+		stub(fs, "readFileSync").withArgs(squarespaceFilename).returns(Buffer.from(squarespaceData))
 
-		const argv: string[] = [
+		global.process.argv = [
 			'-s', squarespaceFilename,
 			'-t', tumblrDirectory,
 			'-r', strapiUrl
 		]
 
-		const rl = readline.createInterface({
-			input: stdin,
-			output: stdout
-		})
-
 		const strapiToken = "apiToken"
 
-		stub(rl, "question")
-			.withArgs(`1. Go to ${strapiUrl}/admin/settings/api-tokens
+		const rl = createStubInstance(readline.Interface, {
+			question: stub().withArgs(`1. Go to ${strapiUrl}/admin/settings/api-tokens
 2. Create an API token
-3. Paste the API token here and press [return]: `).resolves(strapiToken)
+3. Paste the API token here and press [return]: `
+			).resolves(strapiToken) as SinonStub<[query: string, options: Abortable], Promise<string>>,
+		})
+
+		stub(readline, "createInterface").withArgs({
+			input: stdin,
+			output: stdout
+		}).returns(rl)
 
 		const pubDate = new Date()
 
@@ -93,14 +98,9 @@ describe("main", () => {
 			}
 		]
 
-		const importSquarespace: SquarespaceImporter = spy((_data: string) =>
+		const importSquarespace = stub(SquarespaceImporter, "importSquarespace").returns(
 			squarespaceDatumContainers
 		)
-
-		const tumblrPostFilenames = [
-			"1.html",
-			"2.html"
-		]
 
 		const tumblrPosts: TumblrPost[] = [
 			{
@@ -113,9 +113,8 @@ describe("main", () => {
 			}
 		]
 
-		const readTumblrPosts = (_1: FsProxy, _2: string): TumblrPost[] => (tumblrPosts)
-
-		stub(fsProxy, "readdirSync").withArgs(tumblrDirectory).returns(tumblrPostFilenames)
+		stub(ReadTumblrPosts, "readTumblrPosts")
+			.withArgs(tumblrDirectory).returns(tumblrPosts)
 
 		const tumblrArticle = {
 			title: "hey",
@@ -152,7 +151,8 @@ describe("main", () => {
 			}
 		]
 
-		const importTumblr: TumblrImporter = spy((_tumblrPosts: TumblrPost[]) =>
+		stub(TumblrImporter, "importTumblr")
+			.withArgs(tumblrPosts).returns(
 			tumblrDatumContainers
 		)
 
@@ -166,12 +166,8 @@ describe("main", () => {
 			redirectArticles: {}
 		}
 
-		const fetche = stub()
-
 		const assetUploader = new AssetUploader(
 			strapiUrl,
-			fetche,
-			fsProxy,
 			strapiToken
 		)
 
@@ -189,8 +185,6 @@ describe("main", () => {
 			() => tumblrAssetMigrator
 
 		const squarespaceAssetMigrator = new SquarespaceAssetMigrator(
-			fetche,
- 			fsProxy,
 			squarespaceFilename,
 			assetUploader
 		)
@@ -199,17 +193,16 @@ describe("main", () => {
 
 		const buildSquarespaceAssetMigrator: SquarespaceAssetMigratorFactory = () => squarespaceAssetMigrator
 
-		const collateDataContainer: DataContainerCollater =
-			spy(
-				(_datumContainers: DatumContainer[]): DataContainer => dataContainer
-			)
+		stub(DataContainerCollater, "collateDataContainer")
+			.withArgs([...squarespaceDatumContainers, ...tumblrDatumContainers])
+			.returns(dataContainer)
 
-		const strapiExporter = new StrapiExporter(fetche, strapiUrl, strapiToken)
+		const strapiExporter = new StrapiExporter(strapiUrl, strapiToken)
 		const buildStrapiExporter: StrapiExporterFactory = () => strapiExporter
 
 		stub(strapiExporter, "export").withArgs(dataContainer).resolves([])
 
-		const fakeValidate: ValidateArgv = (_1: string[], _2: FsProxy) => (
+		stub(validateArgv, "validateArgv").withArgs(global.process.argv).returns(
 			{
 				"_": [],
 				"s": squarespaceFilename,
@@ -222,14 +215,6 @@ describe("main", () => {
 		)
 
 		await main(
-			argv,
-			fakeValidate,
-			fsProxy,
-			rl,
-			importSquarespace,
-			readTumblrPosts,
-			importTumblr,
-			collateDataContainer,
 			buildStrapiExporter,
 			buildTumblrAssetMigrator,
 			buildSquarespaceAssetMigrator,
@@ -237,12 +222,7 @@ describe("main", () => {
 		)
 
 		expect(importSquarespace).to.have.been.calledWith(squarespaceData)
-		expect(importTumblr).to.have.been.calledWith(tumblrPosts)
 		expect(strapiExporter.export).to.have.been.calledWith(dataContainer)
-		expect(collateDataContainer).to.have.been.calledWith([
-			...squarespaceDatumContainers,
-			...tumblrDatumContainers,
-		])
 		expect(tumblrAssetMigrator.migrateAssets).to.have.been.calledWith(tumblrArticle)
 		expect(squarespaceAssetMigrator.migrateAssets).to.have.been.calledWith(squarespaceArticle)
 	})
