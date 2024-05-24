@@ -20,6 +20,7 @@ const collectionSlugs: string[] = [
 export const importTumblr: (posts: TumblrPost[]) => DatumContainer[] = (posts: TumblrPost[]): DatumContainer[] =>
 	[
 		...(posts.filter(_isText).map(_textToDatumContainer)),
+		...(posts.filter(_isPseudoText).map(_pseudoTextToDatumContainer)),
 		...(posts.filter(_isPhoto).map(_photoToDatumContainer)),
 	]
 
@@ -55,7 +56,7 @@ export const _constructTextArticle = (post: TumblrPost): Article => {
 	body.innerHTML = post.dom.querySelector("body")!.innerHTML
 
 	body.removeChild(body.querySelector("#footer")!)
-	const title = body.removeChild(body.querySelector("h1")!).textContent!
+	const title = body.removeChild(_textTitle(body)).textContent!
 
 	return {
 		title,
@@ -96,9 +97,63 @@ export const _constructCollection = (dom: Document): Collection =>
 	}
 
 export const _constructTextRedirect = (post: TumblrPost): Redirect => ({
-	from: `/post/${post.id}/${slug(post.dom.querySelector("h1")!.textContent!)}`,
+	from: `/post/${post.id}/${slug(_textTitle(post.dom.body).textContent!)}`,
 	httpCode: 301
 })
+
+export const _textTitle = (body: HTMLElement): HTMLElement =>
+	(body.querySelector("h1"))!
+
+export const _isPseudoText = (post: TumblrPost): boolean => !!post.dom.querySelector(".caption")
+
+export const _constructPseudoTextRedirect = (post: TumblrPost) => ({
+	from: `/post/${post.id}/${slug(_pseudoTextTitle(post.dom.body).textContent!)}`,
+	httpCode: 301
+})
+
+export const _pseudoTextToDatumContainer = (post: TumblrPost): DatumContainer => ({
+	article: _constructPseudoTextArticle(post),
+	tags: _constructTags(post.dom),
+	redirect: _constructPseudoTextRedirect(post),
+	collection: _constructCollection(post.dom),
+})
+
+export const _pseudoTextTitle = (body: HTMLElement): HTMLElement =>
+	(body.querySelector(".caption"))!
+
+export const _sanitizePseudoTextBody = (id: string, body: HTMLElement): string => {
+	Array.from(body.querySelectorAll("img")).forEach(
+		(img) => {
+			img.src = `../media/${id}${img.src.match(/\.[^.]+$/)![0]}`
+		})
+
+	return body.innerHTML.trim()
+}
+
+export const _constructPseudoTextArticle = (post: TumblrPost): Article => {
+	const pubDate = moment(
+		post.dom.querySelector("#footer #timestamp")!.textContent!,
+		"MMMM Do, YYYY h:mma".trim()
+	).toDate()
+
+	// clone body so we don't remove elements that other methods need later
+	const body = post.dom.createElement("body")
+	body.innerHTML = post.dom.querySelector("body")!.innerHTML
+
+	body.removeChild(body.querySelector("#footer")!)
+	const title = body.removeChild(_pseudoTextTitle(body)).textContent!
+
+	return {
+		title,
+		body: _sanitizePseudoTextBody(post.id, body), // excludes title and footer
+		createdAt: pubDate,
+		publishedAt: pubDate,
+		updatedAt: pubDate,
+		slug: slug(title),
+		author: "elle mundy",
+		og_type: "article"
+	}
+}
 
 export const _isPhoto = (post: TumblrPost): boolean =>
 	!!post.dom.querySelector(".npf_row")
@@ -111,7 +166,7 @@ export const _photoToDatumContainer = (post: TumblrPost): DatumContainer => ({
 })
 
 export const _constructPhotoRedirect = (post: TumblrPost): Redirect => ({
-	from: `/post/${post.id}/${slug(post.dom.querySelector("p.npf_chat")!.textContent!)}`,
+	from: `/post/${post.id}/${slug(_photoTitle(post))}`,
 	httpCode: 301
 })
 
@@ -121,11 +176,20 @@ export const _constructPhotoArticle = (post: TumblrPost): Article => {
 		"MMMM Do, YYYY h:mma".trim()
 	).toDate()
 
-	const title = post.dom.querySelector("p.npf_chat")!.textContent!
+	const title = _photoTitle(post)
+
+	const npfRow = post.dom.querySelector(".npf_row")
+
+	let body
+
+	if (!npfRow) {
+		body = post.dom.createElement("body")
+		body.innerHTML = post.dom.querySelector("img")!.outerHTML!
+	}
 
 	return ({
 		title: title,
-		body: _sanitizeBody(post.id, post.dom.querySelector(".npf_row")!),
+		body: _sanitizeBody(post.id, (npfRow || body)!),
 		createdAt: pubDate,
 		publishedAt: pubDate,
 		updatedAt: pubDate,
@@ -134,3 +198,6 @@ export const _constructPhotoArticle = (post: TumblrPost): Article => {
 		og_type: "article"
 	})
 }
+
+export const _photoTitle = (post: TumblrPost) =>
+	post.dom.querySelector("p.npf_chat, p.npf_quirky, p.npf_quote")!.textContent!

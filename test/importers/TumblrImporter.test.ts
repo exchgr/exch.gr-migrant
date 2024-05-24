@@ -17,13 +17,21 @@ import {
 	_isText,
 	_photoToDatumContainer,
 	_textToDatumContainer,
-	importTumblr
+	importTumblr,
+	_textTitle,
+	_photoTitle,
+	_pseudoTextTitle,
+	_isPseudoText,
+	_pseudoTextToDatumContainer,
+	_constructPseudoTextArticle,
+	_sanitizePseudoTextBody, _constructPseudoTextRedirect
 } from "../../src/importers/TumblrImporter"
 
 describe("importTumblr", () => {
 	it("should import only articles with tags, and collections, and redirects from an XML data string", () => {
 		const datumContainers: DatumContainer[] = [
 			essayDatumContainer,
+			pseudoEssayDatumContainer,
 			drawingDatumContainer
 		]
 
@@ -88,12 +96,55 @@ describe("_constructTextRedirect", () => {
 	})
 })
 
+describe("_isPseudoText", () => {
+	it("should return true if the post is a pseudoText", () => {
+		expect(_isPseudoText(pseudoEssay)).to.be.true
+	})
+
+	it("should return false if the post is not a pseudoText", () => {
+		expect(_isPseudoText(drawing)).to.be.false
+	})
+})
+
+describe("_pseudoTextToDatumContainer", () => {
+	it("should convert a pseudo-text-shaped post to a DatumContainer", () => {
+		expect(_pseudoTextToDatumContainer(pseudoEssay)).to.deep.eq(pseudoEssayDatumContainer)
+	})
+})
+
+describe("_pseudoTextTitle", () => {
+	it("should return a body's .caption element", () => {
+		expect(_pseudoTextTitle(pseudoEssay.dom.body).textContent).to.eq(pseudoEssayTitle)
+	})
+})
+
+describe("_sanitizePseudoTextBody", () => {
+	it("should sanitize a pseudoText's body's images", () => {
+		const body = essay.dom.createElement("body")
+		body.innerHTML = pseudoEssayBody
+
+		expect(_sanitizePseudoTextBody(pseudoEssay.id, body)).to.eq(pseudoEssayBodySanitized)
+	})
+})
+
+describe("_constructPseudoTextRedirect", () => {
+	it("should construct a Redirect from an pseudo-text-shaped TumblrPost's dom", () => {
+		expect(_constructPseudoTextRedirect(pseudoEssay)).to.deep.eq(pseudoEssayRedirect)
+	})
+})
+
+describe("_constructPseudoTextArticle", () => {
+	it("should convert pseudo-text-shaped post to article", () => {
+		expect(_constructPseudoTextArticle(pseudoEssay)).to.deep.eq(pseudoEssayArticle)
+	})
+})
+
 describe("_isPhoto", () => {
-	it("should return true if the post is an photo", () => {
+	it("should return true if the post is a photo", () => {
 		expect(_isPhoto(drawing)).to.be.true
 	})
 
-	it("should return false if the post is not an photo", () => {
+	it("should return false if the post is not a photo", () => {
 		expect(_isPhoto(essay)).to.be.false
 	})
 })
@@ -113,6 +164,18 @@ describe("_constructPhotoArticle", () => {
 describe("_constructPhotoRedirect", () => {
 	it("should construct a Redirect from an photo-shaped TumblrPost's dom", () => {
 		expect(_constructPhotoRedirect(drawing)).to.deep.eq(drawingRedirect)
+	})
+})
+
+describe("_textTitle", () => {
+	it("should return a body's h1 element", () => {
+		expect(_textTitle(essay.dom.body).textContent).to.eq(essayTitle)
+	})
+})
+
+describe("_photoTitle", () => {
+	it("should return an npf_chat element", () => {
+		expect(_photoTitle(drawing)).to.eq(photoTitle)
 	})
 })
 
@@ -264,14 +327,9 @@ ${photoTagHtmlFragments}
 	).window.document
 }
 
-const tumblrData = [
-	essay,
-	drawing
-]
-
 const essayArticle: Article = {
 	title: essayTitle,
-	body: `${essayBodySanitized}`,
+	body: essayBodySanitized,
 	createdAt: essayPubDate,
 	publishedAt: essayPubDate,
 	updatedAt: essayPubDate,
@@ -289,19 +347,105 @@ const essayRedirect = {
 	from: "/post/673954189579288576/home-audio-evolution-part-3-ue-boom",
 	httpCode: 301
 }
+
 const essayDatumContainer: DatumContainer = {
 	article: essayArticle,
-
 	tags: essayTags,
 	collection: essayCollection,
-
 	redirect: essayRedirect
+}
+
+const pseudoEssayTitle = `drawing in disguise`
+
+const pseudoEssayBody = `<img src="../../media/2.png">`
+
+const pseudoEssayPubDateString = "December 11th, 2016 8:30pm"
+const pseudoEssayPubDate = moment(pseudoEssayPubDateString, "MMMM Do, YYYY h:mma").toDate()
+
+const pseudoEssayTagsWithoutCollection: Tag[] = [
+	{
+		name: "Selfie",
+		slug: "selfie"
+	},
+	{
+		name: "Self-Portrait",
+		slug: "self-portrait"
+	},
+	{
+		name: "Photorealism",
+		slug: "photorealism"
+	}
+]
+
+const pseudoEssayTags: Tag[] = [
+	{
+		name: "Drawing",
+		slug: "drawing"
+	},
+	...pseudoEssayTagsWithoutCollection
+]
+
+const pseudoEssayTagHtmlFragments = pseudoEssayTags.map(tagHtmlFragment)
+
+const pseudoEssay: TumblrPost = {
+	id: "2",
+	dom: new JSDOM(
+		`<!DOCTYPE HTML>
+	<html>
+		<head>
+			<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+			<link rel="stylesheet" type="text/css" href="../style.css"/>
+		</head>
+		<body>
+			${pseudoEssayBody}
+			<div class="caption"><p>${pseudoEssayTitle}</p></div>
+			<div id="footer">
+				<span id="timestamp"> ${pseudoEssayPubDateString} </span>
+				${pseudoEssayTagHtmlFragments}
+			</div>
+		</body>`,
+		{
+			contentType: "text/html",
+			url: "http://localhost"
+		}
+	).window.document
+}
+
+const pseudoEssayBodySanitized = `<img src="../media/2.png">`
+
+const pseudoEssayArticle: Article = {
+	title: pseudoEssayTitle,
+	body: pseudoEssayBodySanitized,
+	createdAt: pseudoEssayPubDate,
+	publishedAt: pseudoEssayPubDate,
+	updatedAt: pseudoEssayPubDate,
+	slug: "drawing-in-disguise",
+	author: "elle mundy",
+	og_type: "article",
 }
 
 const drawingCollection = {
 	name: "Drawing",
 	slug: "drawing"
 }
+
+const pseudoEssayRedirect = {
+	from: "/post/2/drawing-in-disguise",
+	httpCode: 301
+}
+
+const pseudoEssayDatumContainer: DatumContainer = {
+	article: pseudoEssayArticle,
+	tags: pseudoEssayTagsWithoutCollection,
+	collection: drawingCollection,
+	redirect: pseudoEssayRedirect
+}
+
+const tumblrData = [
+	essay,
+	pseudoEssay,
+	drawing
+]
 
 const drawingArticle = {
 	title: photoTitle,
